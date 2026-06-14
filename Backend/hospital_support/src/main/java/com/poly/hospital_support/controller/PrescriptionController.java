@@ -9,4 +9,6 @@ import org.springframework.web.bind.annotation.*;
 public Prescription update(@PathVariable Integer id,
                            @RequestBody Prescription prescription) {
     return service.update(id, prescription);
+
+
 }
