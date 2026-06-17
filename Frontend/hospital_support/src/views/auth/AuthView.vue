@@ -138,7 +138,7 @@ function handleLogin() {
       }
       localStorage.setItem('currentUser', JSON.stringify(user))
       alert('Đăng nhập thành công với tài khoản Bác sĩ!')
-      router.push('/')
+      router.push({ name: 'doctor-thong-tin-bac-si' })
     } else {
       alert('Tài khoản hoặc mật khẩu không chính xác! Hãy đăng nhập bằng SĐT hoặc dùng tài khoản mẫu: patient / 123456')
     }

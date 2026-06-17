@@ -79,6 +79,12 @@ const routes = [
     name: 'medical-history',
     component: () => import('../views/patient/MedicalHistoryView.vue'),
   },
+  /* ---------- Doctor ---------- */
+  {
+    path: '/thong-tin-bac-si',
+    name: 'doctor-thong-tin-bac-si',
+    component: () => import('../views/doctor/DoctorProfileView.vue'),
+  }
 ]
 
 const router = createRouter({

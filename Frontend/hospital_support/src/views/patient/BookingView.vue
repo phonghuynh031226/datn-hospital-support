@@ -32,17 +32,17 @@ const activeBookingResult = ref(null) // Holds successfully created booking
 const bookingHistory = ref([])
 
 const departmentOptions = [
-  'Tim mạch', 'Nội tổng quát', 'Ngoại khoa',
-  'Sản phụ khoa', 'Nhi khoa', 'Mắt'
+  'Khoa Tim Mạch', 'Khoa Nội Tổng Quát', 'Khoa Ngoại',
+  'Khoa Phụ Sản', 'Khoa Nhi', 'Khoa Mắt'
 ]
 
 const doctorsMap = {
-  'Tim mạch': ['PGS.TS Nguyễn Văn An', 'Bác sĩ bất kỳ'],
-  'Nội tổng quát': ['ThS.BS Trần Văn Bình', 'Bác sĩ bất kỳ'],
-  'Ngoại khoa': ['GS.TS Lê Hoàng Minh', 'Bác sĩ bất kỳ'],
-  'Sản phụ khoa': ['TS.BS Trần Thị Mai', 'Bác sĩ bất kỳ'],
-  'Nhi khoa': ['ThS.BS Phạm Thùy Linh', 'Bác sĩ bất kỳ'],
-  'Mắt': ['TS.BS Lê Thị Lan', 'Bác sĩ bất kỳ']
+  'Khoa Tim Mạch': ['PGS.TS Nguyễn Văn An', 'Bác sĩ bất kỳ'],
+  'Khoa Nội Tổng Quát': ['ThS.BS Trần Văn Bình', 'Bác sĩ bất kỳ'],
+  'Khoa Ngoại': ['GS.TS Lê Hoàng Minh', 'Bác sĩ bất kỳ'],
+  'Khoa Phụ Sản': ['TS.BS Trần Thị Mai', 'Bác sĩ bất kỳ'],
+  'Khoa Nhi': ['ThS.BS Phạm Thùy Linh', 'Bác sĩ bất kỳ'],
+  'Khoa Mắt': ['TS.BS Lê Thị Lan', 'Bác sĩ bất kỳ']
 }
 
 const timeSlots = [
@@ -104,27 +104,27 @@ watch(() => form.value.symptoms, (newVal) => {
   }
   // 3. Nhi khoa
   else if (val.includes('trẻ') || val.includes('bé') || val.includes('con tôi') || val.includes('cháu nhà') || val.includes('sơ sinh') || val.includes('nhi')) {
-    aiSuggestedDept.value = 'Nhi khoa'
+    aiSuggestedDept.value = 'Khoa Nhi'
     aiConfidence.value = 88
-    form.value.department = 'Nhi khoa'
+    form.value.department = 'Khoa Nhi'
   }
   // 4. Sản phụ khoa
   else if (val.includes('thai') || val.includes('bầu') || val.includes('sinh') || val.includes('đẻ') || val.includes('phụ khoa') || val.includes('tử cung') || val.includes('buồng trứng')) {
-    aiSuggestedDept.value = 'Sản phụ khoa'
+    aiSuggestedDept.value = 'Khoa Phụ Sản'
     aiConfidence.value = 90
-    form.value.department = 'Sản phụ khoa'
+    form.value.department = 'Khoa Phụ Sản'
   }
   // 5. Ngoại khoa
   else if (val.includes('gãy') || val.includes('chấn thương') || val.includes('mổ') || val.includes('phẫu thuật') || val.includes('ruột thừa') || val.includes('khớp') || val.includes('xương')) {
-    aiSuggestedDept.value = 'Ngoại khoa'
+    aiSuggestedDept.value = 'Khoa Ngoại'
     aiConfidence.value = 85
-    form.value.department = 'Ngoại khoa'
+    form.value.department = 'Khoa Ngoại'
   }
   // 6. Nội tổng quát
   else if (val.includes('dạ dày') || val.includes('bụng') || val.includes('tiêu hóa') || val.includes('tiểu đường') || val.includes('gan') || val.includes('mật') || val.includes('ho') || val.includes('sốt')) {
-    aiSuggestedDept.value = 'Nội tổng quát'
+    aiSuggestedDept.value = 'Khoa Nội'
     aiConfidence.value = 80
-    form.value.department = 'Nội tổng quát'
+    form.value.department = 'Khoa Nội'
   }
   else {
     aiSuggestedDept.value = ''
@@ -209,7 +209,7 @@ function resetForm() {
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h1 class="text-4xl md:text-5xl font-bold mb-4">Đăng Ký Đặt Lịch Khám</h1>
         <p class="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-          Điền các thông tin triệu chứng để hệ thống tự động gợi ý khoa và xếp chỗ khám ưu tiên cho bác.
+          Điền các thông tin triệu chứng để hệ thống tự động gợi ý khoa và xếp chỗ khám ưu tiên cho bạn.
         </p>
       </div>
     </div>
@@ -282,7 +282,7 @@ function resetForm() {
                 id="booking-address"
                 v-model="form.address"
                 type="text"
-                placeholder="Nhập địa chỉ nhà của bác"
+                placeholder="Nhập địa chỉ nhà"
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 bg-gray-50/50"
               />
             </div>
@@ -296,7 +296,7 @@ function resetForm() {
                 id="booking-symptoms"
                 v-model="form.symptoms"
                 rows="3"
-                placeholder="Ví dụ: Bác cảm thấy bị đau thắt ngực, mệt mỏi, khó thở khi leo cầu thang..."
+                placeholder="Ví dụ: Bạn cảm thấy bị đau thắt ngực, mệt mỏi, khó thở khi leo cầu thang..."
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 resize-none bg-gray-50/50"
               ></textarea>
 
@@ -308,7 +308,7 @@ function resetForm() {
                   </div>
                   <div>
                     <span class="font-bold text-sm bg-primary-700 text-white px-2 py-0.5 rounded-full mr-2">Trí tuệ AI gợi ý</span>
-                    Bác nên khám khoa: <strong class="text-lg underline">{{ aiSuggestedDept }}</strong>
+                    Bạn nên khám khoa: <strong class="text-lg underline">{{ aiSuggestedDept }}</strong>
                   </div>
                 </div>
                 <span class="text-xs text-gray-400 font-bold">Độ chính xác: {{ aiConfidence }}%</span>
@@ -335,7 +335,7 @@ function resetForm() {
 
               <div>
                 <label for="booking-doc" class="block text-lg font-semibold text-gray-700 mb-2">
-                  Bác sĩ khám (Tùy chọn)
+                  Bạn sĩ khám (Tùy chọn)
                 </label>
                 <select
                   id="booking-doc"
@@ -343,7 +343,7 @@ function resetForm() {
                   class="w-full px-4 py-3 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 appearance-none bg-no-repeat bg-right"
                   style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%236b7280%27 d=%27M2 4l4 4 4-4%27/%3E%3C/svg%3E'); background-position: right 16px center;"
                 >
-                  <option value="">-- Bác sĩ bất kỳ --</option>
+                  <option value="">-- Bạn sĩ bất kỳ --</option>
                   <option v-for="doc in (doctorsMap[form.department] || [])" :key="doc" :value="doc">{{ doc }}</option>
                 </select>
               </div>
@@ -478,7 +478,7 @@ function resetForm() {
               </div>
             </div>
             <div v-else class="text-center py-6 text-gray-400 text-base">
-              Bác chưa có lịch hẹn khám nào được đăng ký gần đây.
+              Bạn chưa có lịch hẹn khám nào được đăng ký gần đây.
             </div>
           </div>
 
@@ -495,7 +495,7 @@ function resetForm() {
             📋
           </div>
           <h3 class="text-2xl font-extrabold text-gray-800">Xác Nhận Đăng Ký Khám</h3>
-          <p class="text-base text-gray-400 mt-1">Bác vui lòng soát lại thông tin trước khi xác nhận:</p>
+          <p class="text-base text-gray-400 mt-1">Bạn vui lòng kiểm tra lại thông tin trước khi xác nhận:</p>
         </div>
 
         <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 text-base space-y-3">
