@@ -178,7 +178,7 @@ function confirmBooking() {
     bookingType: form.value.bookingType,
     paymentMethod: form.value.paymentMethod,
     paymentStatus: form.value.paymentMethod === 'Online' ? 'Chưa thanh toán' : 'Chưa thanh toán',
-    status: 'Chờ khám'
+    status: 'Đặt lịch'
   }
   
   if (form.value.paymentMethod === 'Online') {

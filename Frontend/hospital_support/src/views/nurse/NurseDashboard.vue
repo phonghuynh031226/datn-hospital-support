@@ -63,10 +63,11 @@ const activeFilter = ref('Tất cả')
 const searchPhone = ref('')
 const filteredCheckinList = computed(() => {
   return bookings.value.filter(item => {
+    if (item.status !== 'Đặt lịch') return false
     if (activeFilter.value === 'Đã thanh toán' && item.paymentStatus !== 'Đã thanh toán') return false
     if (activeFilter.value === 'Chưa thanh toán' && item.paymentStatus !== 'Chưa thanh toán') return false
     if (searchPhone.value.trim() && !item.phone.includes(searchPhone.value.trim())) return false
-    return item.status !== 'Đã hủy'
+    return true
   })
 })
 
@@ -105,7 +106,11 @@ function seedMockData() {
     { id: 2003, code: 'BV-30003', stt: 3, fullName: 'Võ Văn Đức', gender: 'Nam', phone: '0923456789', email: 'duc@email.com', address: 'Quận 12, TP.HCM', department: 'Tim mạch', doctor: 'PGS.TS Nguyễn Văn An', date: today, timeSlot: '09:00 - 09:30', symptoms: 'Tái khám tim mạch — đã có kết quả xét nghiệm máu và điện tim', bookingType: 'Tái khám', paymentMethod: 'Online', paymentStatus: 'Đã thanh toán', status: 'Làn 2', room: 'Phòng 101', testResults: { bloodTest: 'Cholesterol tổng: 6.2 mmol/l (Cao). LDL: 4.1 mmol/l (Cao). HDL: 1.0 mmol/l (Thấp). Triglyceride: 2.8 mmol/l (Cao nhẹ).', xray: 'Điện tâm đồ: Nhịp xoang đều 78 lần/phút. Trục QRS bình thường. Không ST chênh.' } },
     { id: 2004, code: 'BV-30004', stt: 4, fullName: 'Trần Văn Hoàng', gender: 'Nam', phone: '0934567890', email: 'hoang@email.com', address: 'Hóc Môn, TP.HCM', department: 'Tim mạch', doctor: 'PGS.TS Nguyễn Văn An', date: today, timeSlot: '09:30 - 10:00', symptoms: 'Nhức mỏi toàn thân, sốt nhẹ 37.5°C kéo dài 5 ngày', bookingType: 'Khám mới', paymentMethod: 'Tại quầy', paymentStatus: 'Đã thanh toán', status: 'Chờ khám', room: 'Phòng 101' },
     { id: 2005, code: 'BV-30005', stt: 5, fullName: 'Lê Thị Thu', gender: 'Nữ', phone: '0945678901', email: 'thu@email.com', address: 'Thủ Đức, TP.HCM', department: 'Mắt', doctor: 'TS.BS Lê Thị Lan', date: today, timeSlot: '10:00 - 10:30', symptoms: 'Mắt phải nhìn mờ dần, mỏi mắt nhiều khi đọc sách', bookingType: 'Khám mới', paymentMethod: 'Online', paymentStatus: 'Đã thanh toán', status: 'Chờ khám', room: 'Phòng 204' },
-    { id: 2006, code: 'BV-30006', stt: 6, fullName: 'Trần Thị Lan', gender: 'Nữ', phone: '0956789012', email: 'lan@email.com', address: 'Gò Vấp, TP.HCM', department: 'Nội tổng quát', doctor: 'ThS.BS Trần Văn Bình', date: today, timeSlot: '08:00 - 08:30', symptoms: 'Đau bụng âm ỉ vùng thượng vị, ợ chua, chướng bụng sau ăn', bookingType: 'Khám mới', paymentMethod: 'Tại quầy', paymentStatus: 'Đã thanh toán', status: 'Đi xét nghiệm', room: 'Phòng 201', testOrdered: ['bloodTest', 'ultrasound'], testSentAt: Date.now() - 3000 }
+    { id: 2006, code: 'BV-30006', stt: 6, fullName: 'Trần Thị Lan', gender: 'Nữ', phone: '0956789012', email: 'lan@email.com', address: 'Gò Vấp, TP.HCM', department: 'Nội tổng quát', doctor: 'ThS.BS Trần Văn Bình', date: today, timeSlot: '08:00 - 08:30', symptoms: 'Đau bụng âm ỉ vùng thượng vị, ợ chua, chướng bụng sau ăn', bookingType: 'Khám mới', paymentMethod: 'Tại quầy', paymentStatus: 'Đã thanh toán', status: 'Đi xét nghiệm', room: 'Phòng 201', testOrdered: ['bloodTest', 'ultrasound'], testSentAt: Date.now() - 3000 },
+    // Mock pending online checkins
+    { id: 2007, code: 'BV-30007', stt: 0, fullName: 'Nguyễn Văn Hùng', gender: 'Nam', phone: '0967890123', email: 'hung.nguyen@email.com', address: 'Quận 3, TP.HCM', department: 'Ngoại khoa', doctor: 'GS.TS Lê Hoàng Minh', date: today, timeSlot: '11:00 - 11:30', symptoms: 'Đau khớp gối trái âm ỉ sau khi chơi thể thao', bookingType: 'Khám mới', paymentMethod: 'Online', paymentStatus: 'Đã thanh toán', status: 'Đặt lịch', room: '' },
+    { id: 2008, code: 'BV-30008', stt: 0, fullName: 'Trần Thị Hương', gender: 'Nữ', phone: '0978901234', email: 'huong.tran@email.com', address: 'Quận 10, TP.HCM', department: 'Sản phụ khoa', doctor: 'TS.BS Trần Thị Mai', date: today, timeSlot: '13:30 - 14:00', symptoms: 'Khám thai định kỳ tuần thứ 24', bookingType: 'Tái khám', paymentMethod: 'Tại quầy', paymentStatus: 'Chưa thanh toán', status: 'Đặt lịch', room: '' },
+    { id: 2009, code: 'BV-30009', stt: 0, fullName: 'Lê Hoàng Nam', gender: 'Nam', phone: '0989012345', email: 'nam.le@email.com', address: 'Tân Bình, TP.HCM', department: 'Nhi khoa', doctor: 'ThS.BS Phạm Thùy Linh', date: today, timeSlot: '14:00 - 14:30', symptoms: 'Sốt cao 38.5 độ kèm ho khan', bookingType: 'Khám mới', paymentMethod: 'Online', paymentStatus: 'Chưa thanh toán', status: 'Đặt lịch', room: '' }
   ]
   bookings.value = mock
   localStorage.setItem('patientBookings', JSON.stringify(mock))
@@ -207,18 +212,166 @@ function collectPayment(id) {
   }
 }
 
-function confirmArrival(id) {
+function getRoomByDept(dept) {
+  switch (dept) {
+    case 'Tim mạch': return 'Phòng 101'
+    case 'Nội tổng quát': return 'Phòng 201'
+    case 'Ngoại khoa': return 'Phòng 202'
+    case 'Sản phụ khoa': return 'Phòng 203'
+    case 'Nhi khoa': return 'Phòng 204'
+    case 'Mắt': return 'Phòng 205'
+    default: return 'Phòng 101'
+  }
+}
+
+const departmentOptions = [
+  'Tim mạch', 'Nội tổng quát', 'Ngoại khoa',
+  'Sản phụ khoa', 'Nhi khoa', 'Mắt'
+]
+
+const doctorsMap = {
+  'Tim mạch': ['PGS.TS Nguyễn Văn An', 'Bác sĩ bất kỳ'],
+  'Nội tổng quát': ['ThS.BS Trần Văn Bình', 'Bác sĩ bất kỳ'],
+  'Ngoại khoa': ['GS.TS Lê Hoàng Minh', 'Bác sĩ bất kỳ'],
+  'Sản phụ khoa': ['TS.BS Trần Thị Mai', 'Bác sĩ bất kỳ'],
+  'Nhi khoa': ['ThS.BS Phạm Thùy Linh', 'Bác sĩ bất kỳ'],
+  'Mắt': ['TS.BS Lê Thị Lan', 'Bác sĩ bất kỳ']
+}
+
+function checkInOnlinePatient(id) {
   const list = [...bookings.value]
   const idx = list.findIndex(b => b.id === id)
   if (idx !== -1) {
-    if (list[idx].paymentStatus !== 'Đã thanh toán') {
-      alert('Vui lòng thu phí trước khi xác nhận!')
+    const p = list[idx]
+    if (p.paymentStatus !== 'Đã thanh toán') {
+      alert('Bệnh nhân chưa thanh toán viện phí! Hãy thu phí trước.')
       return
     }
-    list[idx].status = 'Chờ khám'
+    p.room = getRoomByDept(p.department)
+    const deptBookings = list.filter(b => b.department === p.department && b.status !== 'Đặt lịch' && b.status !== 'Đã hủy')
+    const maxSTT = deptBookings.reduce((max, b) => b.stt > max ? b.stt : max, 0)
+    p.stt = maxSTT + 1
+    p.status = 'Chờ khám'
     bookings.value = list
     localStorage.setItem('patientBookings', JSON.stringify(list))
-    alert(`🎫 In phiếu thành công! BN ${list[idx].fullName} - STT: ${list[idx].stt} chờ phân loại.`)
+    alert(`✅ Tiếp nhận thành công! BN: ${p.fullName} - STT: ${p.stt} - Phòng: ${p.room}`)
+  }
+}
+
+function collectPaymentAndCheckIn(id) {
+  const list = [...bookings.value]
+  const idx = list.findIndex(b => b.id === id)
+  if (idx !== -1) {
+    const p = list[idx]
+    p.paymentStatus = 'Đã thanh toán'
+    p.room = getRoomByDept(p.department)
+    const deptBookings = list.filter(b => b.department === p.department && b.status !== 'Đặt lịch' && b.status !== 'Đã hủy')
+    const maxSTT = deptBookings.reduce((max, b) => b.stt > max ? b.stt : max, 0)
+    p.stt = maxSTT + 1
+    p.status = 'Chờ khám'
+    bookings.value = list
+    localStorage.setItem('patientBookings', JSON.stringify(list))
+    alert(`✅ Thu phí & Tiếp nhận thành công! BN: ${p.fullName} - STT: ${p.stt} - Phòng: ${p.room}`)
+  }
+}
+
+function classifyToLane2(id) {
+  const list = [...bookings.value]
+  const idx = list.findIndex(b => b.id === id)
+  if (idx !== -1) {
+    list[idx].status = 'Làn 2'
+    bookings.value = list
+    localStorage.setItem('patientBookings', JSON.stringify(list))
+    alert(`✅ Đã chuyển BN ${list[idx].fullName} vào Làn 2 (Có kết quả).`)
+  }
+}
+
+function callSpecificPatient(id) {
+  if (patientInRoom.value) {
+    alert(`⚠️ Bệnh nhân ${patientInRoom.value.fullName} vẫn đang trong phòng bác sĩ! Chờ bác sĩ hoàn thành.`)
+    return
+  }
+  const list = [...bookings.value]
+  const idx = list.findIndex(b => b.id === id)
+  if (idx !== -1) {
+    const p = list[idx]
+    const isLane2 = p.status === 'Làn 2'
+    list[idx].status = isLane2 ? 'Đang đọc KQ' : 'Đang khám'
+    lastCalledLane.value = isLane2 ? 'lane2' : 'lane1'
+    bookings.value = list
+    localStorage.setItem('patientBookings', JSON.stringify(list))
+    localStorage.setItem('lastCalledLane', lastCalledLane.value)
+    const laneLabel = isLane2 ? 'Làn 2 — Đọc kết quả' : 'Làn 1 — Khám mới'
+    alert(`🔔 Mời bệnh nhân ${p.fullName} (STT: ${p.stt}) vào phòng bác sĩ!\n[${laneLabel}]`)
+  }
+}
+
+/* ========== WALK-IN REGISTRATION STATE & ACTIONS ========== */
+const walkInForm = ref({
+  fullName: '',
+  gender: 'Nam',
+  phone: '',
+  address: '',
+  department: 'Nội tổng quát',
+  doctor: 'Bác sĩ bất kỳ',
+  bookingType: 'Khám mới',
+  symptoms: 'Đăng ký trực tiếp tại quầy'
+})
+
+const walkInDoctors = computed(() => {
+  return doctorsMap[walkInForm.value.department] || []
+})
+
+function handleWalkInSubmit() {
+  const f = walkInForm.value
+  if (!f.fullName || !f.phone || !f.department) {
+    alert('Vui lòng điền các thông tin bắt buộc (*)!')
+    return
+  }
+  
+  const randomCode = 'BV-' + Math.floor(100000 + Math.random() * 900000)
+  const room = getRoomByDept(f.department)
+  
+  const list = [...bookings.value]
+  const deptBookings = list.filter(b => b.department === f.department && b.status !== 'Đặt lịch' && b.status !== 'Đã hủy')
+  const maxSTT = deptBookings.reduce((max, b) => b.stt > max ? b.stt : max, 0)
+  const stt = maxSTT + 1
+  
+  const newBooking = {
+    id: Date.now(),
+    code: randomCode,
+    stt: stt,
+    fullName: f.fullName,
+    gender: f.gender,
+    phone: f.phone,
+    email: 'Không có (Tại quầy)',
+    address: f.address || 'Không có',
+    department: f.department,
+    doctor: f.doctor || 'Bác sĩ bất kỳ',
+    date: new Date().toISOString().split('T')[0],
+    timeSlot: 'Hành chính (Tại quầy)',
+    symptoms: f.symptoms || 'Khám tổng quát tại quầy',
+    bookingType: f.bookingType,
+    paymentMethod: 'Tại quầy',
+    paymentStatus: 'Đã thanh toán',
+    status: 'Chờ khám',
+    room: room
+  }
+  
+  bookings.value.unshift(newBooking)
+  localStorage.setItem('patientBookings', JSON.stringify(bookings.value))
+  alert(`✅ Đăng ký khám tại chỗ thành công!\nBệnh nhân: ${f.fullName}\nSTT: ${stt} — Phòng: ${room}`)
+  
+  // Reset form
+  walkInForm.value = {
+    fullName: '',
+    gender: 'Nam',
+    phone: '',
+    address: '',
+    department: 'Nội tổng quát',
+    doctor: 'Bác sĩ bất kỳ',
+    bookingType: 'Khám mới',
+    symptoms: 'Đăng ký trực tiếp tại quầy'
   }
 }
 
@@ -347,16 +500,19 @@ function getLaneLabel(lane) {
               <span class="text-2xl font-black text-blue-700">{{ lane1Queue.length }}</span>
             </div>
             <div class="p-4 space-y-3 max-h-80 overflow-y-auto">
-              <div v-for="(p, i) in lane1Queue" :key="p.id" class="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-center justify-between gap-3 hover:border-blue-300 transition-all">
+              <div v-for="(p, i) in lane1Queue" :key="p.id" class="p-4 bg-white rounded-2xl border border-blue-100 flex items-center justify-between gap-3 hover:border-blue-300 hover:shadow-sm transition-all">
                 <div class="flex items-center gap-3">
-                  <span class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-black text-lg flex-shrink-0">{{ i + 1 }}</span>
+                  <span class="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-black text-lg flex-shrink-0">{{ p.stt }}</span>
                   <div>
                     <h4 class="text-sm font-bold text-gray-800">{{ p.fullName }}</h4>
-                    <p class="text-[11px] text-gray-500">{{ p.department }} • STT: {{ p.stt }}</p>
+                    <p class="text-[11px] text-gray-500">{{ p.department }} • Phòng: {{ p.room }}</p>
                     <p class="text-[10px] text-gray-400 italic mt-0.5 line-clamp-1">"{{ p.symptoms }}"</p>
                   </div>
                 </div>
-                <span class="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg flex-shrink-0">Chờ gọi</span>
+                <button v-if="i === 0" @click="callSpecificPatient(p.id)" class="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 flex-shrink-0 hover:scale-105 active:scale-95">
+                  <i class="bi bi-megaphone-fill"></i> Gọi khám
+                </button>
+                <span v-else class="text-xs bg-blue-50 text-blue-655 font-semibold px-2.5 py-1 rounded-lg flex-shrink-0">Chờ gọi</span>
               </div>
               <div v-if="lane1Queue.length === 0" class="text-center py-8 text-gray-300 text-sm">
                 <i class="bi bi-inbox text-3xl block mb-2"></i>
@@ -378,16 +534,19 @@ function getLaneLabel(lane) {
               <span class="text-2xl font-black text-emerald-700">{{ lane2Queue.length }}</span>
             </div>
             <div class="p-4 space-y-3 max-h-80 overflow-y-auto">
-              <div v-for="(p, i) in lane2Queue" :key="p.id" class="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-center justify-between gap-3 hover:border-emerald-300 transition-all">
+              <div v-for="(p, i) in lane2Queue" :key="p.id" class="p-4 bg-white rounded-2xl border border-emerald-100 flex items-center justify-between gap-3 hover:border-emerald-300 hover:shadow-sm transition-all">
                 <div class="flex items-center gap-3">
-                  <span class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-lg flex-shrink-0">{{ i + 1 }}</span>
+                  <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-lg flex-shrink-0">{{ p.stt }}</span>
                   <div>
                     <h4 class="text-sm font-bold text-gray-800">{{ p.fullName }}</h4>
-                    <p class="text-[11px] text-gray-500">{{ p.department }} • STT: {{ p.stt }}</p>
-                    <p class="text-[10px] text-emerald-600 font-semibold mt-0.5"><i class="bi bi-file-earmark-medical mr-1"></i>Đã có kết quả XN</p>
+                    <p class="text-[11px] text-gray-500">{{ p.department }} • Phòng: {{ p.room }}</p>
+                    <p class="text-[10px] text-emerald-650 font-semibold mt-0.5"><i class="bi bi-file-earmark-medical mr-1"></i>Đã có kết quả XN</p>
                   </div>
                 </div>
-                <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-lg flex-shrink-0">Ưu tiên</span>
+                <button v-if="i === 0" @click="callSpecificPatient(p.id)" class="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 flex-shrink-0 hover:scale-105 active:scale-95">
+                  <i class="bi bi-megaphone-fill"></i> Gọi đọc KQ
+                </button>
+                <span v-else class="text-xs bg-emerald-50 text-emerald-655 font-semibold px-2.5 py-1 rounded-lg flex-shrink-0">Ưu tiên</span>
               </div>
               <div v-if="lane2Queue.length === 0" class="text-center py-8 text-gray-300 text-sm">
                 <i class="bi bi-inbox text-3xl block mb-2"></i>
@@ -409,11 +568,17 @@ function getLaneLabel(lane) {
               <div v-for="p in waitingPatients" :key="p.id" class="p-3 bg-amber-50/50 rounded-xl border border-amber-100 flex items-center justify-between gap-3">
                 <div>
                   <h4 class="text-xs font-bold text-gray-800">{{ p.fullName }} <span class="text-gray-400 font-normal">— STT {{ p.stt }}</span></h4>
-                  <p class="text-[10px] text-gray-400">{{ p.department }} • {{ p.symptoms.substring(0, 50) }}...</p>
+                  <p class="text-[10px] text-gray-400">{{ p.department }} • Phòng: {{ p.room }}</p>
+                  <p class="text-[10px] text-gray-400 italic mt-0.5 line-clamp-1">"{{ p.symptoms }}"</p>
                 </div>
-                <button @click="classifyToLane1(p.id)" class="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all flex-shrink-0 flex items-center gap-1">
-                  <i class="bi bi-arrow-right-circle"></i> Vào Làn 1
-                </button>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <button @click="classifyToLane1(p.id)" class="py-1.5 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1">
+                    Vào Làn 1
+                  </button>
+                  <button @click="classifyToLane2(p.id)" class="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1">
+                    Vào Làn 2
+                  </button>
+                </div>
               </div>
               <div v-if="waitingPatients.length === 0" class="text-center py-4 text-gray-300 text-xs">Tất cả BN đã được phân loại</div>
             </div>
@@ -442,45 +607,125 @@ function getLaneLabel(lane) {
       </div>
 
       <!-- ==================== MENU 2: TIẾP NHẬN TẠI QUẦY ==================== -->
-      <div v-else-if="activeMenu === 'checkin'" class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-fade-in">
-        <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/50">
-          <div class="flex flex-wrap gap-2">
-            <button v-for="filter in ['Tất cả', 'Đã thanh toán', 'Chưa thanh toán']" :key="filter" @click="activeFilter = filter" class="px-4 py-2 text-xs font-bold rounded-xl transition-all" :class="activeFilter === filter ? 'bg-indigo-700 text-white shadow' : 'bg-white border text-gray-500 hover:text-gray-700'">{{ filter }}</button>
+      <div v-else-if="activeMenu === 'checkin'" class="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-fade-in">
+        <!-- PENDING ONLINE BOOKINGS LIST -->
+        <div class="xl:col-span-2 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="text-base font-black text-gray-800"><i class="bi bi-laptop mr-2 text-indigo-600"></i>Hàng đợi tiếp đón (Đăng ký trực tuyến)</h3>
+            <p class="text-xs text-gray-400 mt-1">Xác nhận và cấp phòng khám/số thứ tự cho bệnh nhân đã đăng ký online.</p>
+            
+            <div class="mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="flex flex-wrap gap-2">
+                <button v-for="filter in ['Tất cả', 'Đã thanh toán', 'Chưa thanh toán']" :key="filter" @click="activeFilter = filter" class="px-4 py-2 text-xs font-bold rounded-xl transition-all" :class="activeFilter === filter ? 'bg-indigo-700 text-white shadow-sm' : 'bg-white border text-gray-500 hover:text-gray-700'">{{ filter }}</button>
+              </div>
+              <div class="relative w-full md:w-72">
+                <input v-model="searchPhone" type="text" placeholder="Tìm bằng số điện thoại..." class="w-full pl-10 pr-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                <i class="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              </div>
+            </div>
           </div>
-          <div class="relative w-full md:w-80">
-            <input v-model="searchPhone" type="text" placeholder="Tìm bằng số điện thoại..." class="w-full pl-10 pr-3 py-2 text-xs rounded-xl border border-gray-250 focus:outline-none" />
-            <i class="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          
+          <div class="divide-y divide-gray-100 overflow-y-auto max-h-[600px] flex-1">
+            <div v-for="b in filteredCheckinList" :key="b.id" class="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 hover:bg-gray-50/30 transition-all">
+              <div class="space-y-1.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="text-sm font-bold text-gray-800">{{ b.fullName }}</h4>
+                  <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">{{ b.gender }}</span>
+                  <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded">{{ b.code }}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">Đăng ký trước</span>
+                </div>
+                <p class="text-[11px] text-gray-500">SĐT: <strong>{{ b.phone }}</strong> — Chuyên khoa: <strong>{{ b.department }}</strong></p>
+                <p class="text-[11px] text-gray-500">Bác sĩ: {{ b.doctor }} — Hẹn lúc: {{ b.timeSlot }}</p>
+                <div class="flex items-center gap-2 text-[11px] mt-1">
+                  <span class="font-bold flex items-center gap-1" :class="b.paymentStatus === 'Đã thanh toán' ? 'text-emerald-600' : 'text-rose-600'">
+                    <i class="bi" :class="b.paymentStatus === 'Đã thanh toán' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'"></i>
+                    {{ b.paymentStatus }}
+                  </span>
+                  <span class="text-gray-300">|</span>
+                  <span class="text-gray-400 italic">"{{ b.symptoms }}"</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div v-if="b.paymentStatus === 'Đã thanh toán'" class="flex flex-col gap-1">
+                  <button @click="checkInOnlinePatient(b.id)" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <i class="bi bi-check2-square text-sm"></i> Tiếp nhận & Cấp số
+                  </button>
+                </div>
+                <div v-else class="flex flex-col gap-1">
+                  <button @click="collectPaymentAndCheckIn(b.id)" class="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <i class="bi bi-wallet2 text-sm"></i> Thu phí & Nhận
+                  </button>
+                  <button @click="collectPayment(b.id)" class="text-[10px] text-gray-400 hover:text-indigo-650 underline font-semibold text-center mt-0.5">Chỉ thu phí</button>
+                </div>
+                <button v-if="b.status !== 'Đã hủy'" @click="cancelAppointment(b.id)" class="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors" title="Hủy lịch"><i class="bi bi-trash"></i></button>
+              </div>
+            </div>
+            
+            <div v-if="filteredCheckinList.length === 0" class="text-center py-16 text-gray-400">
+              <i class="bi bi-inbox text-4xl block mb-2 text-gray-300"></i>
+              <p class="text-sm font-bold">Không có bệnh nhân đặt lịch chờ tiếp đón</p>
+              <p class="text-xs text-gray-300 mt-1">Sử dụng thanh tìm kiếm hoặc thay đổi bộ lọc</p>
+            </div>
           </div>
         </div>
-        <div class="divide-y divide-gray-100">
-          <div v-for="b in filteredCheckinList" :key="b.id" class="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 hover:bg-gray-50/30 transition-all">
-            <div class="space-y-1.5">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-sm font-bold text-gray-800">{{ b.fullName }}</h3>
-                <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">{{ b.gender }}</span>
-                <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded">{{ b.code }}</span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded" :class="{
-                  'bg-blue-50 text-blue-700': b.status === 'Làn 1',
-                  'bg-emerald-50 text-emerald-700': b.status === 'Làn 2',
-                  'bg-purple-50 text-purple-700': b.status === 'Đang khám' || b.status === 'Đang đọc KQ',
-                  'bg-amber-50 text-amber-700': b.status === 'Chờ khám',
-                  'bg-gray-50 text-gray-500': b.status === 'Đã khám'
-                }">{{ b.status }}</span>
-              </div>
-              <p class="text-[11px] text-gray-500">SĐT: <strong>{{ b.phone }}</strong> — {{ b.department }} — {{ b.doctor }}</p>
-              <div class="flex gap-2 text-[11px]">
-                <span class="font-bold" :class="b.paymentStatus === 'Đã thanh toán' ? 'text-emerald-600' : 'text-amber-600'">{{ b.paymentStatus }}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl text-center">
-                <span class="text-[9px] text-indigo-400 font-bold uppercase block leading-none">STT</span>
-                <span class="text-xl font-black text-indigo-800 leading-none mt-1 block">{{ b.stt }}</span>
-              </div>
-              <button v-if="b.paymentStatus !== 'Đã thanh toán'" @click="collectPayment(b.id)" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all">Thu phí</button>
-              <button v-if="b.status !== 'Đã hủy' && b.status !== 'Đã khám'" @click="cancelAppointment(b.id)" class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors" title="Hủy lịch"><i class="bi bi-trash"></i></button>
-            </div>
+
+        <!-- WALK-IN REGISTRATION FORM -->
+        <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="text-base font-black text-gray-800"><i class="bi bi-person-plus-fill mr-2 text-emerald-600"></i>Đăng ký khám tại quầy</h3>
+            <p class="text-xs text-gray-400 mt-1">Nhập thông tin cho bệnh nhân đăng ký trực tiếp tại chỗ.</p>
           </div>
+          
+          <form @submit.prevent="handleWalkInSubmit" class="p-6 space-y-4 overflow-y-auto max-h-[600px] flex-1">
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Họ và tên (*)</label>
+              <input v-model="walkInForm.fullName" required type="text" placeholder="Nhập họ và tên..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Giới tính</label>
+                <select v-model="walkInForm.gender" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                  <option>Nam</option>
+                  <option>Nữ</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Số điện thoại (*)</label>
+                <input v-model="walkInForm.phone" required type="tel" placeholder="Nhập số điện thoại..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Địa chỉ</label>
+              <input v-model="walkInForm.address" type="text" placeholder="Nhập địa chỉ của bệnh nhân..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Chuyên khoa khám (*)</label>
+                <select v-model="walkInForm.department" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                  <option v-for="dept in departmentOptions" :key="dept" :value="dept">{{ dept }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Bác sĩ yêu cầu</label>
+                <select v-model="walkInForm.doctor" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                  <option v-for="doc in walkInDoctors" :key="doc" :value="doc">{{ doc }}</option>
+                </select>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Triệu chứng lâm sàng / Lý do khám</label>
+              <textarea v-model="walkInForm.symptoms" rows="3" placeholder="Ví dụ: Đau đầu kéo dài, nhức mỏi toàn thân..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"></textarea>
+            </div>
+            
+            <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 hover:scale-[1.01] active:scale-[0.99]">
+              <i class="bi bi-plus-circle-fill text-lg"></i>
+              Đăng ký & Cấp số khám
+            </button>
+          </form>
         </div>
       </div>
 
