@@ -120,7 +120,7 @@ function handleLogout() {
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h1 class="text-4xl md:text-5xl font-bold mb-4">Hồ Sơ Cá Nhân</h1>
         <p class="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-          Quản lý thông tin sức khỏe cá nhân, thông tin liên lạc và bảo mật tài khoản của bác.
+          Quản lý thông tin sức khỏe cá nhân, thông tin liên lạc và bảo mật tài khoản của bạn.
         </p>
       </div>
     </div>
@@ -132,7 +132,7 @@ function handleLogout() {
           🔒
         </div>
         <h3 class="text-2xl font-bold text-gray-800">Yêu Cầu Đăng Nhập</h3>
-        <p class="text-base text-gray-500 mt-2">Bác cần đăng nhập tài khoản để xem và cập nhật hồ sơ cá nhân.</p>
+        <p class="text-base text-gray-500 mt-2">Bạn cần đăng nhập tài khoản để xem và cập nhật hồ sơ cá nhân.</p>
         <RouterLink to="/dang-nhap" class="w-full btn-primary !py-3.5 !text-lg !rounded-2xl shadow mt-6">
           Đến Trang Đăng Nhập
         </RouterLink>
@@ -146,9 +146,6 @@ function handleLogout() {
         <div class="lg:col-span-7 bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6 animate-slide-in-left">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <h2 class="text-2xl font-bold text-gray-800"><i class="bi bi-person-circle text-primary-700 mr-2"></i>Thông Tin Bệnh Nhân</h2>
-            <button @click="handleLogout" class="text-sm font-bold text-red-600 hover:underline">
-              Đăng xuất tài khoản <i class="bi bi-box-arrow-right"></i>
-            </button>
           </div>
 
           <form @submit.prevent="handleUpdateProfile" class="space-y-5">

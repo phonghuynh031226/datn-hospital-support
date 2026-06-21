@@ -3,30 +3,30 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 /* ========== CAROUSEL ========== */
 const currentSlide = ref(0)
-const slides = [
+const slides = ref([
   {
-    image: '/images/banners/banner1.png',
+    image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80',
     title: 'Chào Mừng Đến Với Bệnh Viện Đa Khoa',
     subtitle: 'Hệ thống y tế hiện đại, uy tín hàng đầu — nơi sức khỏe của bạn là ưu tiên số một',
   },
   {
-    image: '/images/banners/banner2.png',
+    image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80',
     title: 'Đội Ngũ Bác Sĩ Giỏi & Tận Tâm',
     subtitle: 'Hơn 50 chuyên gia đầu ngành, giàu kinh nghiệm, luôn đồng hành cùng bạn',
   },
   {
-    image: '/images/banners/banner3.png',
+    image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
     title: 'Trang Thiết Bị Hiện Đại',
     subtitle: 'Hệ thống máy móc tiên tiến nhất, đảm bảo chẩn đoán chính xác và điều trị hiệu quả',
   },
-]
+])
 let slideInterval = null
 
 function nextSlide() {
-  currentSlide.value = (currentSlide.value + 1) % slides.length
+  currentSlide.value = (currentSlide.value + 1) % slides.value.length
 }
 function prevSlide() {
-  currentSlide.value = (currentSlide.value - 1 + slides.length) % slides.length
+  currentSlide.value = (currentSlide.value - 1 + slides.value.length) % slides.value.length
 }
 function goToSlide(index) {
   currentSlide.value = index
@@ -34,13 +34,97 @@ function goToSlide(index) {
 
 onMounted(() => {
   slideInterval = setInterval(nextSlide, 5000)
-})
-onUnmounted(() => {
-  if (slideInterval) clearInterval(slideInterval)
+  loadSystemConfig()
+  loadNews()
+  loadDoctors()
+  updateDisplayCount()
+  window.addEventListener('resize', updateDisplayCount)
+  doctorInterval = setInterval(nextDoctor, 4000)
 })
 
+onUnmounted(() => {
+  if (slideInterval) clearInterval(slideInterval)
+  if (doctorInterval) clearInterval(doctorInterval)
+  window.removeEventListener('resize', updateDisplayCount)
+})
+
+function loadSystemConfig() {
+  const data = localStorage.getItem('hospitalConfig')
+  if (data) {
+    const config = JSON.parse(data)
+    if (config.banner1) slides.value[0].image = config.banner1
+    if (config.banner2) slides.value[1].image = config.banner2
+    if (config.banner3) slides.value[2].image = config.banner3
+    if (config.whyChooseUsTitle) whyChooseUsTitle.value = config.whyChooseUsTitle
+    if (config.whyChooseUsSubtitle) whyChooseUsSubtitle.value = config.whyChooseUsSubtitle
+    if (config.reasons && Array.isArray(config.reasons)) reasons.value = config.reasons
+  }
+}
+
+function loadNews() {
+  const data = localStorage.getItem('hospitalNews')
+  const defaultNews = [
+    {
+      id: 1,
+      image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
+      title: 'Bệnh viện triển khai chương trình khám sức khỏe miễn phí cho người cao tuổi',
+      summary: 'Nhằm hưởng ứng tháng hành động vì người cao tuổi, bệnh viện tổ chức chương trình khám miễn phí cho bệnh nhân trên 60 tuổi, bao gồm đo đường huyết, điện tim và tư vấn dinh dưỡng xương khớp.',
+      date: '10/06/2026',
+      category: 'Sự kiện'
+    },
+    {
+      id: 2,
+      image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80',
+      title: 'Ứng dụng kỹ thuật phẫu thuật nội soi tiên tiến trong điều trị bệnh tim',
+      summary: 'Lần đầu tiên tại Việt Nam, bệnh viện áp dụng thành công kỹ thuật phẫu thuật nội soi robot trong lĩnh vực tim mạch cho bệnh nhân cao tuổi bị hẹp van động mạch chủ.',
+      date: '05/06/2026',
+      category: 'Y khoa'
+    },
+    {
+      id: 3,
+      image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
+      title: 'Hướng dẫn đăng ký khám bệnh trực tuyến — Nhanh chóng & Tiện lợi',
+      summary: 'Hệ thống đặt lịch khám trực tuyến giúp bệnh nhân tiết kiệm thời gian chờ đợi, chủ động lựa chọn bác sĩ và khung giờ phù hợp ngay tại nhà thông qua máy tính hoặc điện thoại.',
+      date: '01/06/2026',
+      category: 'Hướng dẫn'
+    },
+    {
+      id: 4,
+      image: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80',
+      title: 'Chế độ dinh dưỡng khoa học dành cho người bệnh đái tháo đường',
+      summary: 'Chế độ ăn uống hợp lý đóng vai trò quyết định giúp kiểm soát tốt chỉ số đường huyết, duy trì năng lượng và hạn chế tối đa các biến chứng nguy hiểm của bệnh tiểu đường.',
+      date: '28/05/2026',
+      category: 'Dinh dưỡng'
+    },
+    {
+      id: 5,
+      image: 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&w=600&q=80',
+      title: 'Tầm soát ung thư sớm: Chìa khóa vàng bảo vệ sức khỏe gia đình',
+      summary: 'Việc thực hiện kiểm tra sức khỏe và tầm soát ung thư định kỳ giúp phát hiện mầm mống tế bào ác tính ở giai đoạn đầu, nâng cao đáng kể tỷ lệ điều trị thành công lên tới 90%.',
+      date: '25/05/2026',
+      category: 'Y khoa'
+    },
+    {
+      id: 6,
+      image: 'https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&w=600&q=80',
+      title: 'Bí quyết bảo vệ đôi mắt khỏe mạnh trong kỷ nguyên số',
+      summary: 'Tiếp xúc liên tục với thiết bị điện tử khiến mắt dễ bị khô, mỏi và giảm thị lực. Bác sĩ chuyên khoa khuyên bạn nên áp dụng quy tắc 20-20-20 để bảo vệ mắt.',
+      date: '20/05/2026',
+      category: 'Y khoa'
+    }
+  ]
+  if (data) {
+    news.value = JSON.parse(data).slice(0, 6)
+  } else {
+    news.value = defaultNews
+    localStorage.setItem('hospitalNews', JSON.stringify(defaultNews))
+  }
+}
+
 /* ========== WHY CHOOSE US ========== */
-const reasons = [
+const whyChooseUsTitle = ref('Vì Sao Chọn Bệnh Viện Đa Khoa?')
+const whyChooseUsSubtitle = ref('Chúng tôi cam kết mang đến dịch vụ y tế chất lượng cao nhất, vì sức khỏe của bạn và gia đình')
+const reasons = ref([
   {
     icon: 'bi-people-fill',
     title: 'Đội Ngũ Chuyên Gia',
@@ -65,39 +149,110 @@ const reasons = [
     desc: 'Dịch vụ chăm sóc chu đáo, tận tâm từ khâu tiếp đón đến điều trị. Luôn lấy bệnh nhân làm trung tâm.',
     color: 'from-rose-500 to-rose-700',
   },
-]
+])
 
-/* ========== DOCTORS ========== */
-const doctors = [
-  {
-    name: 'PGS.TS Nguyễn Văn An',
-    specialty: 'Tim mạch',
-    experience: '25 năm kinh nghiệm',
-    image: '/images/doctors/doctor1.png',
-    desc: 'Chuyên gia hàng đầu về tim mạch can thiệp, nguyên Phó Giám đốc Bệnh viện Tim',
-  },
-  {
-    name: 'TS.BS Trần Thị Mai',
-    specialty: 'Sản phụ khoa',
-    experience: '20 năm kinh nghiệm',
-    image: '/images/doctors/doctor2.png',
-    desc: 'Chuyên gia sản phụ khoa, từng tu nghiệp tại Pháp. Nhiều công trình nghiên cứu quốc tế',
-  },
-  {
-    name: 'GS.TS Lê Hoàng Minh',
-    specialty: 'Ngoại tổng quát',
-    experience: '30 năm kinh nghiệm',
-    image: '/images/doctors/doctor3.png',
-    desc: 'Giáo sư đầu ngành ngoại khoa. Đã thực hiện hàng nghìn ca phẫu thuật thành công',
-  },
-  {
-    name: 'ThS.BS Phạm Thùy Linh',
-    specialty: 'Nhi khoa',
-    experience: '15 năm kinh nghiệm',
-    image: '/images/doctors/doctor1.png',
-    desc: 'Chuyên gia Nhi khoa, tốt nghiệp Đại học Y Hà Nội. Yêu thương và tận tâm với bệnh nhi',
-  },
-]
+/* ========== DOCTORS CAROUSEL ========== */
+const doctors = ref([])
+const currentDoctorIndex = ref(0)
+const displayCount = ref(4)
+let doctorInterval = null
+
+function updateDisplayCount() {
+  if (window.innerWidth >= 1024) {
+    displayCount.value = 4
+  } else if (window.innerWidth >= 640) {
+    displayCount.value = 2
+  } else {
+    displayCount.value = 1
+  }
+}
+
+function loadDoctors() {
+  const data = localStorage.getItem('hospitalStaff')
+  const defaultDoctors = [
+    {
+      name: 'PGS.TS Nguyễn Văn An',
+      specialty: 'Tim mạch',
+      experience: '25 năm kinh nghiệm',
+      image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80',
+      desc: 'Chuyên gia hàng đầu về tim mạch can thiệp, nguyên Phó Giám đốc Bệnh viện Tim',
+    },
+    {
+      name: 'TS.BS Trần Thị Mai',
+      specialty: 'Sản phụ khoa',
+      experience: '20 năm kinh nghiệm',
+      image: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&w=600&q=80',
+      desc: 'Chuyên gia sản phụ khoa, từng tu nghiệp tại Pháp. Nhiều công trình nghiên cứu quốc tế',
+    },
+    {
+      name: 'GS.TS Lê Hoàng Minh',
+      specialty: 'Ngoại tổng quát',
+      experience: '30 năm kinh nghiệm',
+      image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
+      desc: 'Giáo sư đầu ngành ngoại khoa. Đã thực hiện hàng nghìn ca phẫu thuật thành công',
+    },
+    {
+      name: 'ThS.BS Phạm Thùy Linh',
+      specialty: 'Nhi khoa',
+      experience: '15 năm kinh nghiệm',
+      image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=80',
+      desc: 'Chuyên gia Nhi khoa, tốt nghiệp Đại học Y Hà Nội. Yêu thương và tận tâm với bệnh nhi',
+    }
+  ]
+
+  if (data) {
+    const staffList = JSON.parse(data)
+    const filtered = staffList.filter(s => s.role.includes('Bác sĩ') || s.role === 'doctor')
+    if (filtered.length > 0) {
+      doctors.value = filtered.map((s, index) => {
+        const defaultImages = [
+          'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80',
+          'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&w=600&q=80',
+          'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
+          'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=80',
+        ]
+        return {
+          name: s.name,
+          specialty: s.specialty || 'Chuyên khoa',
+          experience: s.schedule ? s.schedule.split(' ')[0] + ' ' + (s.schedule.includes('Ca') ? s.schedule.split(' ').slice(-3).join(' ') : 'Ca trực') : 'Có lịch hẹn',
+          image: s.image || defaultImages[index % defaultImages.length],
+          desc: s.bio || 'Bác sĩ chuyên khoa giỏi và tận tâm.'
+        }
+      })
+      return
+    }
+  }
+  doctors.value = defaultDoctors
+}
+
+function nextDoctor() {
+  if (doctors.value.length <= displayCount.value) return
+  const maxIndex = doctors.value.length - displayCount.value
+  if (currentDoctorIndex.value >= maxIndex) {
+    currentDoctorIndex.value = 0
+  } else {
+    currentDoctorIndex.value++
+  }
+  resetDoctorAutoplay()
+}
+
+function prevDoctor() {
+  if (doctors.value.length <= displayCount.value) return
+  const maxIndex = doctors.value.length - displayCount.value
+  if (currentDoctorIndex.value <= 0) {
+    currentDoctorIndex.value = maxIndex
+  } else {
+    currentDoctorIndex.value--
+  }
+  resetDoctorAutoplay()
+}
+
+function resetDoctorAutoplay() {
+  if (doctorInterval) {
+    clearInterval(doctorInterval)
+    doctorInterval = setInterval(nextDoctor, 4000)
+  }
+}
 
 /* ========== DEPARTMENTS ========== */
 const departments = [
@@ -108,55 +263,9 @@ const departments = [
   { icon: 'bi-emoji-smile', name: 'Nhi khoa', desc: 'Khám và điều trị bệnh cho trẻ em, tiêm chủng, dinh dưỡng trẻ', color: 'bg-yellow-50 text-yellow-600' },
   { icon: 'bi-eye', name: 'Mắt', desc: 'Khám mắt tổng quát, phẫu thuật Lasik, điều trị bệnh lý về mắt', color: 'bg-purple-50 text-purple-600' },
 ]
-
 /* ========== NEWS ========== */
-const news = [
-  {
-    id: 1,
-    image: '/images/banners/banner1.png',
-    title: 'Bệnh viện triển khai chương trình khám sức khỏe miễn phí cho người cao tuổi',
-    summary: 'Nhằm hưởng ứng tháng hành động vì người cao tuổi, bệnh viện tổ chức chương trình khám miễn phí cho bệnh nhân trên 60 tuổi.',
-    date: '10/06/2026',
-    category: 'Sự kiện',
-  },
-  {
-    id: 2,
-    image: '/images/banners/banner2.png',
-    title: 'Ứng dụng kỹ thuật phẫu thuật nội soi tiên tiến trong điều trị bệnh tim',
-    summary: 'Lần đầu tiên tại Việt Nam, bệnh viện áp dụng thành công kỹ thuật phẫu thuật nội soi robot trong lĩnh vực tim mạch.',
-    date: '05/06/2026',
-    category: 'Y khoa',
-  },
-  {
-    id: 3,
-    image: '/images/banners/banner3.png',
-    title: 'Hướng dẫn đăng ký khám bệnh trực tuyến — Nhanh chóng & Tiện lợi',
-    summary: 'Hệ thống đặt lịch khám trực tuyến giúp bệnh nhân tiết kiệm thời gian chờ đợi, chủ động lựa chọn bác sĩ và khung giờ phù hợp.',
-    date: '01/06/2026',
-    category: 'Hướng dẫn',
-  },
-]
-
-/* ========== BOOKING FORM ========== */
-const form = ref({
-  fullName: '',
-  phone: '',
-  email: '',
-  department: '',
-  doctor: '',
-  date: '',
-  symptoms: '',
-})
-
-const departmentOptions = [
-  'Tim mạch', 'Nội tổng quát', 'Ngoại khoa',
-  'Sản phụ khoa', 'Nhi khoa', 'Mắt',
-]
-
-function submitBooking() {
-  alert('Đặt lịch khám thành công! Chúng tôi sẽ liên hệ xác nhận với bạn sớm nhất.')
-  form.value = { fullName: '', phone: '', email: '', department: '', doctor: '', date: '', symptoms: '' }
-}
+const news = ref([])
+// Booking form states removed as booking form has its own dedicated page at /dat-lich
 
 /* ========== SCROLL ANIMATION ========== */
 const visibleSections = ref(new Set())
@@ -217,10 +326,10 @@ onMounted(() => {
                     class="flex flex-wrap gap-4"
                     :class="currentSlide === index ? 'animate-fade-in-up delay-300' : ''"
                   >
-                    <a href="#booking-form" class="btn-primary !bg-white !text-primary-700 hover:!bg-blue-50 !shadow-lg">
+                    <RouterLink to="/dat-lich" class="btn-primary !bg-white !text-primary-700 hover:!bg-blue-50 !shadow-lg">
                       <i class="bi bi-calendar-check"></i>
                       Đặt lịch khám ngay
-                    </a>
+                    </RouterLink>
                     <a href="tel:19001234" class="btn-outline !border-white !text-white hover:!bg-white/20 hover:!text-white">
                       <i class="bi bi-telephone"></i>
                       1900 1234
@@ -268,16 +377,16 @@ onMounted(() => {
     <section
       id="why-choose-us"
       data-animate
-      class="py-16 md:py-24 bg-white"
+      class="pt-16 pb-8 md:pt-20 md:pb-10 bg-white"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-14">
           <span class="inline-block px-4 py-1.5 bg-primary-50 text-primary-700 text-sm font-semibold rounded-full mb-4">
             <i class="bi bi-star-fill mr-1"></i> Vì sao chọn chúng tôi
           </span>
-          <h2 class="section-title">Vì Sao Chọn Bệnh Viện Đa Khoa?</h2>
+          <h2 class="section-title">{{ whyChooseUsTitle }}</h2>
           <p class="section-subtitle">
-            Chúng tôi cam kết mang đến dịch vụ y tế chất lượng cao nhất, vì sức khỏe của bạn và gia đình
+            {{ whyChooseUsSubtitle }}
           </p>
         </div>
 
@@ -306,7 +415,7 @@ onMounted(() => {
     <section
       id="doctors-section"
       data-animate
-      class="py-16 md:py-24 bg-gradient-to-b from-primary-50/50 to-white"
+      class="pt-8 pb-8 md:pt-10 md:pb-10 bg-gradient-to-b from-primary-50/50 to-white"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-14">
@@ -319,38 +428,66 @@ onMounted(() => {
           </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-          <div
-            v-for="(doctor, index) in doctors"
-            :key="index"
-            class="card-hover group bg-white rounded-2xl overflow-hidden border border-gray-100"
-            :class="visibleSections.has('doctors-section') ? 'animate-fade-in-up' : 'opacity-0'"
-            :style="{ animationDelay: `${index * 0.15}s` }"
+        <div class="relative px-4 md:px-12" :class="visibleSections.has('doctors-section') ? 'animate-fade-in-up' : 'opacity-0'">
+          <!-- Navigation buttons -->
+          <button
+            @click="prevDoctor"
+            class="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-100 text-primary-700 hover:bg-primary-50 transition-all duration-300 flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+            :disabled="doctors.length <= displayCount"
+            aria-label="Bác sĩ trước"
           >
-            <!-- Doctor Image -->
-            <div class="relative overflow-hidden h-64">
-              <img
-                :src="doctor.image"
-                :alt="doctor.name"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div class="absolute inset-0 bg-gradient-to-t from-primary-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                <p class="text-white text-sm leading-relaxed">{{ doctor.desc }}</p>
+            <i class="bi bi-chevron-left text-lg"></i>
+          </button>
+          <button
+            @click="nextDoctor"
+            class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-100 text-primary-700 hover:bg-primary-50 transition-all duration-300 flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+            :disabled="doctors.length <= displayCount"
+            aria-label="Bác sĩ tiếp"
+          >
+            <i class="bi bi-chevron-right text-lg"></i>
+          </button>
+
+          <!-- Carousel Window -->
+          <div class="overflow-hidden">
+            <div
+              class="flex transition-transform duration-500 ease-in-out"
+              :style="{ transform: `translateX(-${currentDoctorIndex * (100 / displayCount)}%)` }"
+            >
+              <div
+                v-for="(doctor, index) in doctors"
+                :key="index"
+                class="w-full sm:w-1/2 lg:w-1/4 p-3 flex-shrink-0 animate-fade-in"
+              >
+                <div class="card-hover group bg-white rounded-2xl overflow-hidden border border-gray-100 h-full flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300">
+                  <!-- Doctor Image -->
+                  <div class="relative overflow-hidden h-64 flex-shrink-0">
+                    <img
+                      :src="doctor.image"
+                      :alt="doctor.name"
+                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div class="absolute inset-0 bg-gradient-to-t from-primary-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                      <p class="text-white text-sm leading-relaxed line-clamp-4">{{ doctor.desc }}</p>
+                    </div>
+                    <!-- Specialty Badge -->
+                    <div class="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-primary-700">
+                      {{ doctor.specialty }}
+                    </div>
+                  </div>
+                  <!-- Doctor Info -->
+                  <div class="p-5 flex-grow flex flex-col justify-between">
+                    <div>
+                      <h3 class="text-base font-bold text-gray-800 mb-1 line-clamp-1">{{ doctor.name }}</h3>
+                      <p class="text-sm text-primary-600 font-medium mb-1 line-clamp-1">
+                        <i class="bi bi-briefcase mr-1"></i>{{ doctor.specialty }}
+                      </p>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 border-t pt-2 border-gray-50 flex items-center gap-1">
+                      <i class="bi bi-clock text-primary-500"></i>{{ doctor.experience }}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <!-- Specialty Badge -->
-              <div class="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-primary-700">
-                {{ doctor.specialty }}
-              </div>
-            </div>
-            <!-- Doctor Info -->
-            <div class="p-5">
-              <h3 class="text-base font-bold text-gray-800 mb-1">{{ doctor.name }}</h3>
-              <p class="text-sm text-primary-600 font-medium mb-1">
-                <i class="bi bi-briefcase mr-1"></i>{{ doctor.specialty }}
-              </p>
-              <p class="text-xs text-gray-400">
-                <i class="bi bi-clock mr-1"></i>{{ doctor.experience }}
-              </p>
             </div>
           </div>
         </div>
@@ -368,7 +505,7 @@ onMounted(() => {
     <section
       id="departments-section"
       data-animate
-      class="py-16 md:py-24 bg-white"
+      class="pt-8 pb-8 md:pt-10 md:pb-10 bg-white"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-14">
@@ -408,7 +545,7 @@ onMounted(() => {
     <section
       id="news-section"
       data-animate
-      class="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white"
+      class="pt-8 pb-8 md:pt-10 md:pb-10 bg-gradient-to-b from-gray-50 to-white"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-14">
@@ -421,7 +558,7 @@ onMounted(() => {
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           <div
             v-for="(item, index) in news"
             :key="item.id"
@@ -466,169 +603,6 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- ==================== BOOKING FORM ==================== -->
-    <section
-      id="booking-form"
-      data-animate
-      class="py-16 md:py-24 bg-gradient-to-br from-primary-50 via-blue-50 to-primary-100"
-    >
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-12">
-          <span class="inline-block px-4 py-1.5 bg-white text-primary-700 text-sm font-semibold rounded-full mb-4 shadow-sm">
-            <i class="bi bi-calendar2-check mr-1"></i> Đặt lịch khám
-          </span>
-          <h2 class="section-title">Đặt Lịch Khám Trực Tuyến</h2>
-          <p class="section-subtitle">
-            Điền thông tin bên dưới để đặt lịch khám. Chúng tôi sẽ liên hệ xác nhận trong thời gian sớm nhất.
-          </p>
-        </div>
-
-        <form
-          @submit.prevent="submitBooking"
-          class="bg-white rounded-3xl shadow-xl p-8 md:p-10 border border-gray-100"
-          :class="visibleSections.has('booking-form') ? 'animate-fade-in-up' : 'opacity-0'"
-        >
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <!-- Họ tên -->
-            <div>
-              <label for="fullName" class="block text-sm font-semibold text-gray-700 mb-2">
-                <i class="bi bi-person mr-1 text-primary-600"></i> Họ và tên <span class="text-red-500">*</span>
-              </label>
-              <input
-                id="fullName"
-                v-model="form.fullName"
-                type="text"
-                required
-                placeholder="Nhập họ và tên đầy đủ"
-                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                       transition-all duration-200 placeholder:text-gray-400"
-              />
-            </div>
-
-            <!-- Số điện thoại -->
-            <div>
-              <label for="phone" class="block text-sm font-semibold text-gray-700 mb-2">
-                <i class="bi bi-telephone mr-1 text-primary-600"></i> Số điện thoại <span class="text-red-500">*</span>
-              </label>
-              <input
-                id="phone"
-                v-model="form.phone"
-                type="tel"
-                required
-                placeholder="VD: 0901 234 567"
-                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                       transition-all duration-200 placeholder:text-gray-400"
-              />
-            </div>
-
-            <!-- Email -->
-            <div>
-              <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
-                <i class="bi bi-envelope mr-1 text-primary-600"></i> Email
-              </label>
-              <input
-                id="email"
-                v-model="form.email"
-                type="email"
-                placeholder="VD: email@example.com"
-                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                       transition-all duration-200 placeholder:text-gray-400"
-              />
-            </div>
-
-            <!-- Chọn khoa -->
-            <div>
-              <label for="department" class="block text-sm font-semibold text-gray-700 mb-2">
-                <i class="bi bi-building mr-1 text-primary-600"></i> Chọn chuyên khoa <span class="text-red-500">*</span>
-              </label>
-              <select
-                id="department"
-                v-model="form.department"
-                required
-                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                       transition-all duration-200 text-gray-700 appearance-none"
-                style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%236b7280%27 d=%27M2 4l4 4 4-4%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 16px center;"
-              >
-                <option value="" disabled>-- Chọn chuyên khoa --</option>
-                <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
-              </select>
-            </div>
-
-            <!-- Ngày khám -->
-            <div>
-              <label for="date" class="block text-sm font-semibold text-gray-700 mb-2">
-                <i class="bi bi-calendar-date mr-1 text-primary-600"></i> Ngày khám mong muốn <span class="text-red-500">*</span>
-              </label>
-              <input
-                id="date"
-                v-model="form.date"
-                type="date"
-                required
-                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                       transition-all duration-200 text-gray-700"
-              />
-            </div>
-
-            <!-- Bác sĩ -->
-            <div>
-              <label for="doctor" class="block text-sm font-semibold text-gray-700 mb-2">
-                <i class="bi bi-person-badge mr-1 text-primary-600"></i> Chọn bác sĩ (tuỳ chọn)
-              </label>
-              <select
-                id="doctor"
-                v-model="form.doctor"
-                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                       transition-all duration-200 text-gray-700 appearance-none"
-                style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%236b7280%27 d=%27M2 4l4 4 4-4%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 16px center;"
-              >
-                <option value="">-- Bác sĩ bất kỳ --</option>
-                <option v-for="doc in doctors" :key="doc.name" :value="doc.name">
-                  {{ doc.name }} — {{ doc.specialty }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Triệu chứng -->
-          <div class="mt-5">
-            <label for="symptoms" class="block text-sm font-semibold text-gray-700 mb-2">
-              <i class="bi bi-chat-text mr-1 text-primary-600"></i> Triệu chứng / Lý do khám
-            </label>
-            <textarea
-              id="symptoms"
-              v-model="form.symptoms"
-              rows="4"
-              placeholder="Mô tả triệu chứng hoặc lý do bạn muốn khám..."
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-base
-                     focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-500
-                     transition-all duration-200 placeholder:text-gray-400 resize-none"
-            ></textarea>
-          </div>
-
-          <!-- Submit -->
-          <div class="mt-8 text-center">
-            <button
-              type="submit"
-              class="btn-primary !px-10 !py-4 !text-lg !rounded-2xl group"
-            >
-              <i class="bi bi-send group-hover:translate-x-1 transition-transform duration-300"></i>
-              Đặt lịch khám
-            </button>
-            <p class="text-xs text-gray-400 mt-3">
-              <i class="bi bi-shield-check mr-1"></i>
-              Thông tin của bạn được bảo mật tuyệt đối
-            </p>
-          </div>
-        </form>
-      </div>
-    </section>
-
     <!-- ==================== CTA STRIP ==================== -->
     <section class="bg-gradient-to-r from-primary-700 via-primary-600 to-primary-800 py-10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -645,13 +619,13 @@ onMounted(() => {
               <i class="bi bi-telephone-fill"></i>
               1900 1234
             </a>
-            <a
-              href="#booking-form"
+            <RouterLink
+              to="/dat-lich"
               class="inline-flex items-center gap-2 border-2 border-white text-white font-semibold px-7 py-3.5 rounded-xl hover:bg-white/15 transition-all duration-300 text-base"
             >
               <i class="bi bi-calendar-check"></i>
               Đặt lịch khám
-            </a>
+            </RouterLink>
           </div>
         </div>
       </div>

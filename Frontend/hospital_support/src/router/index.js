@@ -79,6 +79,51 @@ const routes = [
     name: 'medical-history',
     component: () => import('../views/patient/MedicalHistoryView.vue'),
   },
+  {
+    path: '/don-thuoc',
+    name: 'prescriptions',
+    component: () => import('../views/patient/PrescriptionsView.vue'),
+  },
+  {
+    path: '/so-do',
+    name: 'hospital-map',
+    component: () => import('../views/patient/MapView.vue'),
+  },
+
+  /* ---------- Nurse ---------- */
+  {
+    path: '/dieu-duong',
+    name: 'nurse-dashboard',
+    component: () => import('../views/nurse/NurseDashboard.vue'),
+  },
+
+  /* ---------- Doctor ---------- */
+  {
+    path: '/bac-si-dashboard',
+    name: 'doctor-dashboard',
+    component: () => import('../views/doctor/DoctorDashboard.vue'),
+  },
+
+  /* ---------- Pharmacist ---------- */
+  {
+    path: '/duoc-si',
+    name: 'pharmacist-dashboard',
+    component: () => import('../views/pharmacist/PharmacistDashboard.vue'),
+  },
+
+  /* ---------- Warehouse ---------- */
+  {
+    path: '/kho-thuoc',
+    name: 'warehouse-dashboard',
+    component: () => import('../views/warehouse/WarehouseDashboard.vue'),
+  },
+
+  /* ---------- Director ---------- */
+  {
+    path: '/giam-doc',
+    name: 'director-dashboard',
+    component: () => import('../views/director/DirectorDashboard.vue'),
+  },
 ]
 
 const router = createRouter({

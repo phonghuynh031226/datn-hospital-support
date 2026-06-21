@@ -117,31 +117,79 @@ function handleLogin() {
       }
     }
     
-    // Default admin/doctor/patient accounts if no match in storage
-    if (loginForm.value.username === 'patient' && loginForm.value.password === '123456') {
-      const user = {
-        fullName: 'Nguyễn Văn A',
-        gender: 'Nam',
-        phone: '0901234567',
-        email: 'patient@hospital.com',
-        address: 'Quận 1, TP. Hồ Chí Minh',
-        role: 'patient'
+    // Default accounts if no match in storage
+    const username = loginForm.value.username.toLowerCase()
+    const password = loginForm.value.password
+
+    if (password === '123456') {
+      let matchedUser = null
+      if (username === 'patient') {
+        matchedUser = {
+          fullName: 'Nguyễn Văn A',
+          gender: 'Nam',
+          phone: '0901234567',
+          email: 'patient@hospital.com',
+          address: 'Quận 1, TP. Hồ Chí Minh',
+          role: 'patient'
+        }
+      } else if (username === 'nurse') {
+        matchedUser = {
+          fullName: 'Điều dưỡng Nguyễn Thị Mai',
+          gender: 'Nữ',
+          phone: '0907654321',
+          email: 'nurse.mai@hospital.com',
+          role: 'nurse'
+        }
+      } else if (username === 'doctor') {
+        matchedUser = {
+          fullName: 'PGS.TS Nguyễn Văn An',
+          gender: 'Nam',
+          phone: '0909998888',
+          email: 'doctor.an@hospital.com',
+          role: 'doctor',
+          specialty: 'Tim mạch'
+        }
+      } else if (username === 'pharmacist') {
+        matchedUser = {
+          fullName: 'Dược sĩ Trần Thanh Thủy',
+          gender: 'Nữ',
+          phone: '0908887777',
+          email: 'pharmacy.thuy@hospital.com',
+          role: 'pharmacist'
+        }
+      } else if (username === 'warehouse') {
+        matchedUser = {
+          fullName: 'Thủ kho Phạm Minh Tuấn',
+          gender: 'Nam',
+          phone: '0907776666',
+          email: 'warehouse.tuan@hospital.com',
+          role: 'warehouse'
+        }
+      } else if (username === 'director') {
+        matchedUser = {
+          fullName: 'Giám đốc Lê Hoàng Minh',
+          gender: 'Nam',
+          phone: '0906665555',
+          email: 'director.minh@hospital.com',
+          role: 'director'
+        }
       }
-      localStorage.setItem('currentUser', JSON.stringify(user))
-      alert('Đăng nhập thành công với tài khoản Bệnh nhân!')
-      router.push('/')
-    } else if (loginForm.value.username === 'doctor' && loginForm.value.password === '123456') {
-      const user = {
-        fullName: 'PGS.TS Nguyễn Văn An',
-        role: 'doctor',
-        specialty: 'Tim mạch'
+
+      if (matchedUser) {
+        localStorage.setItem('currentUser', JSON.stringify(matchedUser))
+        alert(`Đăng nhập thành công với tài khoản ${matchedUser.fullName} (${matchedUser.role})!`)
+        // Redirect accordingly
+        if (matchedUser.role === 'patient') router.push('/dat-lich')
+        else if (matchedUser.role === 'nurse') router.push('/dieu-duong')
+        else if (matchedUser.role === 'doctor') router.push('/bac-si-dashboard')
+        else if (matchedUser.role === 'pharmacist') router.push('/duoc-si')
+        else if (matchedUser.role === 'warehouse') router.push('/kho-thuoc')
+        else if (matchedUser.role === 'director') router.push('/giam-doc')
+        return
       }
-      localStorage.setItem('currentUser', JSON.stringify(user))
-      alert('Đăng nhập thành công với tài khoản Bác sĩ!')
-      router.push('/')
-    } else {
-      alert('Tài khoản hoặc mật khẩu không chính xác! Hãy đăng nhập bằng SĐT hoặc dùng tài khoản mẫu: patient / 123456')
     }
+    
+    alert('Tài khoản hoặc mật khẩu không chính xác! Hãy nhập tài khoản mẫu: patient, nurse, doctor, pharmacist, warehouse, hoặc director với mật khẩu là 123456.')
   }
 }
 
@@ -339,9 +387,55 @@ function handleRegister() {
             </button>
           </form>
 
-          <div class="text-center mt-6 p-4 bg-primary-50 rounded-2xl text-base text-primary-800">
-            <p class="font-semibold mb-1"><i class="bi bi-info-circle mr-1"></i> Gợi ý đăng nhập nhanh:</p>
-            <p>Sử dụng tài khoản bệnh nhân mẫu: <strong>patient</strong> / mật khẩu <strong>123456</strong></p>
+          <div class="mt-6 p-5 bg-gradient-to-br from-primary-50 to-blue-50 border border-primary-100 rounded-2xl text-base text-primary-850">
+            <p class="font-bold mb-3 flex items-center gap-1.5 text-primary-800">
+              <i class="bi bi-person-workspace text-xl"></i>
+              Bảng Đăng Nhập Nhanh Cho Demo (Mật khẩu: 123456)
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <button 
+                type="button"
+                @click="loginForm.username = 'patient'; loginForm.password = '123456'; loginForm.usePhone = false"
+                class="py-2 px-3 bg-white hover:bg-emerald-50 border hover:border-emerald-300 rounded-xl text-sm font-semibold text-emerald-700 shadow-sm transition-all text-left flex items-center gap-1.5"
+              >
+                <span>🩺</span> Bệnh nhân
+              </button>
+              <button 
+                type="button"
+                @click="loginForm.username = 'nurse'; loginForm.password = '123456'; loginForm.usePhone = false"
+                class="py-2 px-3 bg-white hover:bg-indigo-50 border hover:border-indigo-300 rounded-xl text-sm font-semibold text-indigo-700 shadow-sm transition-all text-left flex items-center gap-1.5"
+              >
+                <span>👩‍⚕️</span> Điều dưỡng
+              </button>
+              <button 
+                type="button"
+                @click="loginForm.username = 'doctor'; loginForm.password = '123456'; loginForm.usePhone = false"
+                class="py-2 px-3 bg-white hover:bg-sky-50 border hover:border-sky-300 rounded-xl text-sm font-semibold text-sky-700 shadow-sm transition-all text-left flex items-center gap-1.5"
+              >
+                <span>👨‍⚕️</span> Bác sĩ
+              </button>
+              <button 
+                type="button"
+                @click="loginForm.username = 'pharmacist'; loginForm.password = '123456'; loginForm.usePhone = false"
+                class="py-2 px-3 bg-white hover:bg-teal-50 border hover:border-teal-300 rounded-xl text-sm font-semibold text-teal-700 shadow-sm transition-all text-left flex items-center gap-1.5"
+              >
+                <span>💊</span> Dược sĩ
+              </button>
+              <button 
+                type="button"
+                @click="loginForm.username = 'warehouse'; loginForm.password = '123456'; loginForm.usePhone = false"
+                class="py-2 px-3 bg-white hover:bg-amber-50 border hover:border-amber-300 rounded-xl text-sm font-semibold text-amber-700 shadow-sm transition-all text-left flex items-center gap-1.5"
+              >
+                <span>📦</span> Thủ kho thuốc
+              </button>
+              <button 
+                type="button"
+                @click="loginForm.username = 'director'; loginForm.password = '123456'; loginForm.usePhone = false"
+                class="py-2 px-3 bg-white hover:bg-purple-50 border hover:border-purple-300 rounded-xl text-sm font-semibold text-purple-700 shadow-sm transition-all text-left flex items-center gap-1.5"
+              >
+                <span>🏢</span> Giám đốc
+              </button>
+            </div>
           </div>
         </div>
 
