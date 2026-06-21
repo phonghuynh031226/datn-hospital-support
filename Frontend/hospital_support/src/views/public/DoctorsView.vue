@@ -1,12 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const searchDocQuery = ref('')
 const selectedSpecialty = ref('ALL')
 const selectedTitle = ref('ALL')
 const selectedDoctor = ref(null) // Detail modal
 
-const doctors = [
+const doctors = ref([])
+
+const fallbackDoctors = [
   { name: 'PGS.TS Nguyễn Văn An', title: 'PGS.TS', specialty: 'Tim mạch', experience: '25 năm kinh nghiệm', image: '/images/doctors/doctor1.png', dept: 'Khoa Tim Mạch', bio: 'Nguyên Phó Giám đốc Bệnh viện Tim, Giáo sư thỉnh giảng Đại học Y Hà Nội. Chuyên sâu về can thiệp tim mạch, điều trị suy tim và tăng huyết áp.', schedule: 'Thứ 2, Thứ 4, Thứ 6 (Sáng: 08:00 - 11:30)' },
   { name: 'TS.BS Trần Thị Mai', title: 'TS.BS', specialty: 'Sản phụ khoa', experience: '20 năm kinh nghiệm', image: '/images/doctors/doctor2.png', dept: 'Khoa Sản Phụ Khoa', bio: 'Tốt nghiệp Tiến sĩ tại Pháp. Hơn 20 năm kinh nghiệm trong chẩn đoán trước sinh và phẫu thuật phụ khoa nội soi phức tạp.', schedule: 'Thứ 3, Thứ 5 (Cả ngày: 08:00 - 16:30)' },
   { name: 'GS.TS Lê Hoàng Minh', title: 'GS.TS', specialty: 'Ngoại khoa', experience: '30 năm kinh nghiệm', image: '/images/doctors/doctor3.png', dept: 'Khoa Ngoại Tổng Quát', bio: 'Giáo sư đầu ngành ngoại khoa Việt Nam. Đã trực tiếp phẫu thuật thành công hàng ngàn ca ngoại tiêu hóa và chấn thương nặng.', schedule: 'Thứ 2, Thứ 5 (Sáng: 08:00 - 12:00)' },
@@ -15,11 +17,39 @@ const doctors = [
   { name: 'ThS.BS Trần Văn Bình', title: 'ThS.BS', specialty: 'Nội tổng quát', experience: '12 năm kinh nghiệm', image: '/images/doctors/doctor3.png', dept: 'Khoa Nội Tổng Quát', bio: 'Chuyên gia khám điều trị các bệnh lão khoa, xương khớp, tiểu đường và các bệnh chuyển hóa mãn tính ở người lớn tuổi.', schedule: 'Thứ 2 đến Thứ 7 (Hằng ngày)' }
 ]
 
+function extractTitle(name) {
+  const match = name.match(/^(GS\.TS|PGS\.TS|TS\.BS|ThS\.BS|BS\.CK[12]?|BS)/)
+  return match ? match[1] : 'BS'
+}
+
+onMounted(() => {
+  const staffData = localStorage.getItem('hospitalStaff')
+  if (staffData) {
+    const staffList = JSON.parse(staffData)
+    const doctorStaff = staffList.filter(s => s.role === 'Bác sĩ chuyên khoa')
+    if (doctorStaff.length > 0) {
+      doctors.value = doctorStaff.map(s => ({
+        name: s.name,
+        title: extractTitle(s.name),
+        specialty: s.specialty,
+        experience: s.bio ? s.bio.substring(0, 30) + '...' : '10+ năm kinh nghiệm',
+        image: '/images/doctors/doctor1.png',
+        dept: 'Khoa ' + s.specialty,
+        bio: s.bio || 'Chưa cập nhật tiểu sử.',
+        schedule: s.schedule || 'Liên hệ để biết lịch khám',
+        room: s.room || ''
+      }))
+      return
+    }
+  }
+  doctors.value = fallbackDoctors
+})
+
 const specialties = ['ALL', 'Tim mạch', 'Nội tổng quát', 'Ngoại khoa', 'Sản phụ khoa', 'Nhi khoa', 'Mắt']
 const titles = ['ALL', 'GS.TS', 'PGS.TS', 'TS.BS', 'ThS.BS']
 
 const filteredDoctors = computed(() => {
-  return doctors.filter(d => {
+  return doctors.value.filter(d => {
     const matchesSearch = d.name.toLowerCase().includes(searchDocQuery.value.toLowerCase()) || d.bio.toLowerCase().includes(searchDocQuery.value.toLowerCase())
     const matchesSpecialty = selectedSpecialty.value === 'ALL' || d.specialty === selectedSpecialty.value
     const matchesTitle = selectedTitle.value === 'ALL' || d.title === selectedTitle.value
@@ -112,8 +142,7 @@ const filteredDoctors = computed(() => {
             </div>
           </div>
           
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-sm font-semibold text-primary-700">
-            <span class="text-xs text-gray-400">Lịch khám: {{ doc.schedule.split('(')[0] }}</span>
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end items-center text-sm font-semibold text-primary-700">
             <span class="group-hover:translate-x-1 transition-transform">Thông tin chi tiết <i class="bi bi-arrow-right"></i></span>
           </div>
         </div>
@@ -150,14 +179,10 @@ const filteredDoctors = computed(() => {
             <p class="text-base text-gray-600 leading-relaxed">{{ selectedDoctor.bio }}</p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 gap-4">
             <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
               <h5 class="font-bold text-gray-700 mb-1"><i class="bi bi-award text-primary-600 mr-1.5"></i> Kinh nghiệm lâm sàng</h5>
               <p class="text-base text-gray-700">{{ selectedDoctor.experience }}</p>
-            </div>
-            <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-              <h5 class="font-bold text-gray-700 mb-1"><i class="bi bi-calendar-event text-primary-600 mr-1.5"></i> Lịch khám hành chính</h5>
-              <p class="text-base text-gray-700 font-semibold text-primary-800">{{ selectedDoctor.schedule }}</p>
             </div>
           </div>
         </div>

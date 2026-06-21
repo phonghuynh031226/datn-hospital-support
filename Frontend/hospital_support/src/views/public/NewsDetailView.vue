@@ -1,12 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 
-// Font size scaling (rem-based or inline tailwind styling)
-// FontSizeLevel: 0 (Normal - text-lg), 1 (Large - text-xl), 2 (Extra Large - text-2xl)
 const fontSizeLevel = ref(0) 
 
 const fontSizeClass = computed(() => {
@@ -15,106 +13,59 @@ const fontSizeClass = computed(() => {
   return 'text-lg md:text-xl leading-relaxed'
 })
 
-const articles = [
-  {
-    id: 1,
-    image: '/images/banners/banner1.png',
-    title: 'Bệnh viện triển khai chương trình khám sức khỏe miễn phí cho người cao tuổi',
-    date: '10/06/2026',
-    category: 'Sự kiện',
-    author: 'Phòng Truyền Thông',
-    content: `Nhằm hưởng ứng tháng hành động vì người cao tuổi và mong muốn đồng hành chăm sóc sức khỏe cộng đồng, Bệnh viện Đa Khoa thông báo triển khai chương trình: **"Sống vui sống khỏe cùng Người cao tuổi"** với nhiều ưu đãi đặc biệt và hoạt động khám chữa bệnh miễn phí 100%.
+const articles = ref([])
 
-### 1. Nội dung chương trình khám miễn phí:
-- **Đo đường huyết mao mạch**: Phát hiện sớm bệnh lý đái tháo đường (tiểu đường) thường gặp ở người già.
-- **Đo huyết áp và ghi Điện tâm đồ (ECG)**: Tầm soát các bệnh lý tim mạch, rối loạn nhịp tim, phòng ngừa nguy cơ đột quỵ đột ngột.
-- **Khám và tư vấn bệnh lý cơ xương khớp**: Khám thoái hóa khớp gối, loãng xương, cột sống cổ - thắt lưng.
-- **Tư vấn chế độ dinh dưỡng**: Hướng dẫn xây dựng thực đơn ăn uống khoa học, tập luyện thể thao lành mạnh phù hợp với từng thể trạng.
+onMounted(() => {
+  loadArticles()
+})
 
-### 2. Đối tượng áp dụng:
-Tất cả công dân Việt Nam từ **60 tuổi trở lên** (sinh năm 1966 trở về trước). Khi đi khám, các bác vui lòng mang theo thẻ Căn cước công dân để nhân viên hỗ trợ đối chiếu thông tin nhanh chóng.
-
-### 3. Thời gian và địa điểm:
-- **Thời gian**: Từ 07h30 đến 11h30 các ngày từ **15/06/2026 đến hết ngày 20/06/2026** (từ thứ Hai đến thứ Bảy).
-- **Địa điểm**: Sảnh Tiếp đón Tầng Trệt (G), Bệnh viện Đa khoa.
-
-Bệnh viện khuyến khích các bác đặt lịch hẹn trước thông qua số hotline **1900 1234** hoặc đăng ký trực tuyến tại mục **Đặt lịch khám** để nhận mã số khám ưu tiên, tránh phải xếp hàng chờ đợi lâu.`
-  },
-  {
-    id: 2,
-    image: '/images/banners/banner2.png',
-    title: 'Ứng dụng kỹ thuật phẫu thuật nội soi tiên tiến trong điều trị bệnh tim',
-    date: '05/06/2026',
-    category: 'Y khoa',
-    author: 'TS.BS Nguyễn Văn An',
-    content: `Ngày 04/06/2026 vừa qua, Đội ngũ chuyên khoa Ngoại tim mạch của Bệnh viện đã thực hiện thành công ca phẫu thuật thay van động mạch chủ bằng kỹ thuật **nội soi robot ít xâm lấn** cho cụ ông N.V.T (78 tuổi, trú tại Hà Nội) bị hẹp khít van tim mức độ nặng kèm theo bệnh lý nền tăng huyết áp.
-
-Thông thường, đối với bệnh nhân lớn tuổi, phẫu thuật mổ hở lồng ngực truyền thống ẩn chứa nhiều nguy cơ tai biến y khoa nguy hiểm và thời gian phục hồi kéo dài. Việc ứng dụng công nghệ phẫu thuật nội soi mới này giúp giảm thiểu tối đa đau đớn cho bệnh nhân sau mổ:
-- **Đường mổ cực nhỏ**: Chỉ từ 2 - 3 cm thay vì đường mổ dài dọc xương ức.
-- **Mất máu tối thiểu**: Giảm nhu cầu truyền máu ngoài, tránh nhiễm trùng.
-- **Phục hồi thần tốc**: Bệnh nhân cụ ông đã có thể tự ngồi dậy sau 24h và xuất viện chỉ sau 5 ngày theo dõi.
-
-Sự thành công của ca mổ đánh dấu bước phát triển vượt bậc của bệnh viện trong lĩnh vực y khoa kỹ thuật cao, đem lại cơ hội điều trị an toàn cho các bệnh nhân lớn tuổi mắc bệnh tim phức tạp.`
-  },
-  {
-    id: 3,
-    image: '/images/banners/banner3.png',
-    title: 'Hướng dẫn đăng ký khám bệnh trực tuyến — Nhanh chóng & Tiện lợi',
-    date: '01/06/2026',
-    category: 'Hướng dẫn',
-    author: 'Tổ Chăm Sóc Khách Hàng',
-    content: `Nhằm mang đến sự thuận tiện tối đa cho bệnh nhân, đặc biệt là các bác lớn tuổi không muốn phải dậy sớm xếp hàng lấy số, Bệnh viện đã nâng cấp hệ thống đặt lịch khám trực tuyến hoàn toàn mới. Dưới đây là hướng dẫn các bước chi tiết để đặt lịch nhanh chóng:
-
-### Bước 1: Chọn Chuyên khoa và Bác sĩ
-Truy cập vào trang **Đặt lịch khám**, lựa chọn chuyên khoa bác muốn khám (Ví dụ: Khoa Mắt, Khoa Tim Mạch, Khoa Nội Tổng Quát) và chọn bác sĩ mong muốn (hoặc để hệ thống chọn bác sĩ bất kỳ).
-
-### Bước 2: Chọn Ngày và Khung giờ
-Bác chọn ngày muốn đến khám và khung giờ trống phù hợp với lịch sinh hoạt cá nhân (Ví dụ: Khung giờ 08h30 - 09h00).
-
-### Bước 3: Nhập Triệu chứng & Sử dụng AI gợi ý khoa
-Nếu bác phân vân không biết mình bị đau khớp gối hay đau ngực nên khám khoa nào, chỉ cần nhập triệu chứng bệnh vào ô mô tả. Hệ thống trí tuệ nhân tạo (AI) sẽ tự động phân tích và đưa ra gợi ý khoa khám phù hợp nhất cho bác.
-
-### Bước 4: Xác nhận và Nhận mã khám
-Sau khi nhấn Đặt lịch, hệ thống sẽ hiện thông tin phiếu đặt khám chi tiết (gồm Mã khám, Số thứ tự khám, Khung giờ khám). Các bác hãy lưu giữ thông tin này để trình cho y tá tại phòng khám khi đến bệnh viện.`
+function loadArticles() {
+  const data = localStorage.getItem('hospitalNews')
+  if (data) {
+    articles.value = JSON.parse(data)
+  } else {
+    const defaultNews = [
+      {
+        id: 1,
+        image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
+        title: 'Bệnh viện triển khai chương trình khám sức khỏe miễn phí cho người cao tuổi',
+        category: 'Sự kiện',
+        author: 'Phòng Truyền Thông',
+        date: '10/06/2026',
+        content: `<h3>Chương trình ý nghĩa vì cộng đồng</h3><p>Nhằm hưởng ứng tháng hành động vì người cao tuổi Việt Nam và mong muốn đồng hành chăm sóc sức khỏe cộng đồng, Bệnh viện Đa Khoa thông báo triển khai chiến dịch chăm sóc sức khỏe cộng đồng đặc biệt với các nội dung thiết thực:</p><ul><li>Đo đường huyết mao mạch phòng ngừa đái tháo đường.</li><li>Đo điện tâm đồ (ECG) tầm soát bệnh lý tim mạch, huyết áp.</li><li>Khám chuyên khoa Cơ Xương Khớp miễn phí.</li></ul>`
+      },
+      {
+        id: 2,
+        image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80',
+        title: 'Ứng dụng kỹ thuật phẫu thuật nội soi tiên tiến trong điều trị bệnh tim',
+        category: 'Y khoa',
+        author: 'TS.BS Nguyễn Văn An',
+        date: '05/06/2026',
+        content: `<h3>Kỷ nguyên mới trong phẫu thuật tim mạch</h3><p>Đội ngũ chuyên khoa Ngoại tim mạch của Bệnh viện đã thực hiện thành công ca phẫu thuật thay van động mạch chủ bằng kỹ thuật phẫu thuật nội soi robot ít xâm lấn. Phương pháp này mang lại nhiều ưu điểm vượt trội như vết mổ nhỏ, hồi phục nhanh và hạn chế biến chứng...</p>`
+      },
+      {
+        id: 3,
+        image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
+        title: 'Hướng dẫn đăng ký khám bệnh trực tuyến — Nhanh chóng & Tiện lợi',
+        category: 'Hướng dẫn',
+        author: 'Tổ Chăm Sóc Khách Hàng',
+        date: '01/06/2026',
+        content: `<h3>Các bước đặt lịch khám trực tuyến dễ dàng</h3><p>Bệnh nhân chỉ cần truy cập website, chọn Khoa khám, chọn Khung giờ mong muốn và mô tả triệu chứng để được xếp lịch và nhận số thứ tự ưu tiên khám bệnh mà không cần xếp hàng tại quầy lễ tân...</p>`
+      }
+    ]
+    articles.value = defaultNews
+    localStorage.setItem('hospitalNews', JSON.stringify(defaultNews))
   }
-]
+}
 
 const currentId = computed(() => parseInt(route.params.id) || 1)
 const article = computed(() => {
-  return articles.find(a => a.id === currentId.value) || articles[0]
+  return articles.value.find(a => a.id === currentId.value) || articles.value[0] || {}
 })
 
 const relatedArticles = computed(() => {
-  return articles.filter(a => a.id !== currentId.value).slice(0, 2)
+  return articles.value.filter(a => a.id !== currentId.value).slice(0, 2)
 })
-
-// Comment section mock
-const comments = ref([
-  { name: 'Bác Trần Hữu Đức', time: '10/06/2026 14:30', content: 'Chương trình rất ý nghĩa. Tuần sau tôi và nhà tôi sẽ đăng ký qua khám thử.' },
-  { name: 'Cô Lê Thị Mỹ', time: '11/06/2026 09:15', content: 'Tôi đã đặt lịch khám thành công qua mạng, giao diện chữ to dễ dùng lắm. Cảm ơn bệnh viện.' }
-])
-
-const newComment = ref({
-  name: '',
-  content: ''
-})
-
-function submitComment() {
-  if (!newComment.value.name || !newComment.value.content) {
-    alert('Vui lòng nhập họ tên và nội dung ý kiến của bác!')
-    return
-  }
-  
-  const dateStr = new Date().toLocaleString('vi-VN', { hour12: false })
-  comments.value.push({
-    name: newComment.value.name,
-    time: dateStr,
-    content: newComment.value.content
-  })
-  
-  newComment.value = { name: '', content: '' }
-  alert('Gửi ý kiến đóng góp thành công! Ý kiến sẽ được duyệt trong ít phút.')
-}
 </script>
 
 <template>
@@ -165,7 +116,6 @@ function submitComment() {
 
         <div class="flex items-center gap-6 text-sm text-gray-400 font-semibold border-b border-gray-100 pb-4">
           <span><i class="bi bi-calendar3 text-primary-600"></i> Ngày: {{ article.date }}</span>
-          <span><i class="bi bi-person text-primary-600"></i> Người đăng: {{ article.author }}</span>
         </div>
 
         <!-- Article Image -->
@@ -179,61 +129,14 @@ function submitComment() {
 
         <!-- Article content with dynamic font-size -->
         <div
-          class="text-gray-700 space-y-6 pt-4 text-justify whitespace-pre-line"
+          class="text-gray-700 space-y-4 pt-4 text-justify ProseMirror"
           :class="fontSizeClass"
+          v-html="article.content"
         >
-          {{ article.content }}
         </div>
       </div>
 
-      <!-- ==================== COMMENTS SECTION ==================== -->
-      <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm mt-8 space-y-6">
-        <h3 class="text-2xl font-bold text-gray-800"><i class="bi bi-chat-text text-primary-600 mr-2"></i> Ý kiến đóng góp từ người đọc:</h3>
-        
-        <!-- List comments -->
-        <div class="space-y-4 divide-y divide-gray-100">
-          <div v-for="(cmt, idx) in comments" :key="idx" class="pt-4 first:pt-0">
-            <div class="flex justify-between items-center mb-1">
-              <span class="font-bold text-gray-800 text-lg">{{ cmt.name }}</span>
-              <span class="text-xs text-gray-400 font-semibold">{{ cmt.time }}</span>
-            </div>
-            <p class="text-base text-gray-600 leading-relaxed">{{ cmt.content }}</p>
-          </div>
-        </div>
 
-        <!-- Form Comment -->
-        <form @submit.prevent="submitComment" class="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
-          <h4 class="font-bold text-gray-700 text-lg">Gửi ý kiến đóng góp của bác:</h4>
-          
-          <div>
-            <label for="comment-name" class="block text-sm font-semibold text-gray-700 mb-1">Họ tên của bác:</label>
-            <input
-              id="comment-name"
-              v-model="newComment.name"
-              type="text"
-              required
-              placeholder="Nhập họ và tên bác..."
-              class="w-full px-4 py-2.5 text-base rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white placeholder:text-gray-400"
-            />
-          </div>
-
-          <div>
-            <label for="comment-content" class="block text-sm font-semibold text-gray-700 mb-1">Nội dung ý kiến:</label>
-            <textarea
-              id="comment-content"
-              v-model="newComment.content"
-              rows="3"
-              required
-              placeholder="Nhập ý kiến hoặc thắc mắc của bác..."
-              class="w-full px-4 py-2.5 text-base rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white placeholder:text-gray-400 resize-none"
-            ></textarea>
-          </div>
-
-          <button type="submit" class="btn-primary !py-3 !px-6 !text-base !rounded-xl">
-            <i class="bi bi-send"></i> Gửi ý kiến của bác
-          </button>
-        </form>
-      </div>
 
       <!-- ==================== RELATED ARTICLES ==================== -->
       <div class="mt-12 space-y-6">

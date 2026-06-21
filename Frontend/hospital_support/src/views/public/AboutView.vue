@@ -5,14 +5,54 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 
-const activeTab = ref('map') // 'map' | 'departments' | 'doctors'
+const activeTab = ref('intro') // Default to general introduction
+const hospitalIntro = ref(`<h2 style="text-align: center; color: #1e3a8a;"><strong>HỆ THỐNG Y TẾ BỆNH VIỆN ĐA KHOA QUỐC TẾ</strong></h2>` +
+  `<p style="text-align: center; font-style: italic; color: #4b5563;">Hệ thống y tế hiện đại, uy tín hàng đầu — Nơi sức khỏe của bạn là ưu tiên số một</p>` +
+  `<hr />` +
+  `<p>Bệnh viện Đa khoa Quốc tế tự hào là một trong những cơ sở y tế hàng đầu Việt Nam cung cấp dịch vụ khám chữa bệnh chất lượng cao theo tiêu chuẩn quốc tế. Với triết lý <strong>"Tận tâm vì sức khỏe người bệnh"</strong>, chúng tôi không ngừng cải tiến quy trình, đầu tư trang thiết bị công nghệ hiện đại và quy tụ đội ngũ chuyên gia, y bác sĩ đầu ngành nhằm đem lại trải nghiệm y tế hoàn hảo nhất.</p>` +
+  `<p style="text-align: center;">` +
+  `  <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&amp;fit=crop&amp;w=800&amp;q=80" alt="Bệnh viện đa khoa quốc tế" style="border-radius: 8px; max-width: 100%; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" />` +
+  `</p>` +
+  `<h3 style="color: #0f766e;"><strong><u>Tầm Nhìn &amp; Sứ Mệnh Phát Triển</u></strong></h3>` +
+  `<p>Chúng tôi hướng tới mục tiêu trở thành một tổ chức y tế chuẩn quốc tế hàng đầu, nơi người bệnh gửi trọn niềm tin bằng dịch vụ chuyên nghiệp và chi phí hợp lý nhất. Sứ mệnh của chúng tôi là mang lại giải pháp chăm sóc sức khỏe toàn diện, an toàn và hiệu quả cao.</p>` +
+  `<h3 style="color: #0f766e;"><strong><u>Những Lý Do Lựa Chọn Dịch Vụ Của Chúng Tôi</u></strong></h3>` +
+  `<ul>` +
+  `  <li><strong>Đội ngũ chuyên gia hàng đầu:</strong> Các Giáo sư, Tiến sĩ, Bác sĩ chuyên khoa giàu kinh nghiệm, tận tụy phục vụ người bệnh.</li>` +
+  `  <li><strong>Trang thiết bị tiên tiến nhất:</strong> Hệ thống máy chụp MRI, CT Scanner 128 dãy, hệ thống nội soi thế hệ mới giúp phát hiện sớm mọi dấu hiệu bất thường.</li>` +
+  `  <li><strong>Không gian khám chữa bệnh cao cấp:</strong> Môi trường bệnh viện xanh, sạch, an toàn, thiết kế theo mô hình khách sạn bệnh viện tiện nghi.</li>` +
+  `  <li><strong>Dịch vụ hỗ trợ người bệnh 24/7:</strong> Hỗ trợ tận tâm từ lúc đón tiếp, khám bệnh cho đến khi xuất viện và chăm sóc tại nhà.</li>` +
+  `</ul>` +
+  `<hr />` +
+  `<h3 style="color: #0f766e;"><strong><u>Thông Tin Liên Hệ &amp; Địa Chỉ Bản Đồ</u></strong></h3>` +
+  `<p>Quý khách hàng có nhu cầu tư vấn hoặc đặt lịch khám vui lòng liên hệ với chúng tôi qua các kênh thông tin chính thức dưới đây:</p>` +
+  `<ul>` +
+  `  <li><strong>Địa chỉ chính thức:</strong> <a href="https://maps.google.com/?q=Bệnh+viện+Đa+khoa+Quốc+tế" target="_blank" rel="noopener noreferrer"><u>Bản đồ hướng dẫn đường đi đến Bệnh viện</u></a></li>` +
+  `  <li><strong>Hotline Đặt lịch:</strong> <a href="tel:19001234" style="color: #2563eb; font-weight: bold;"><u>1900 1234</u></a> (Hỗ trợ 24/7)</li>` +
+  `  <li><strong>Email phản hồi &amp; Hỗ trợ:</strong> <a href="mailto:contact@hospital.com" style="color: #2563eb; font-weight: bold;"><u>contact@hospital.com</u></a></li>` +
+  `</ul>`)
 
-// Read tab query parameter if present
 onMounted(() => {
   if (route.query.tab) {
     activeTab.value = route.query.tab
   }
+  loadIntro()
+  loadDoctors()
 })
+
+function loadIntro() {
+  const configJson = localStorage.getItem('hospitalConfig')
+  if (configJson) {
+    const config = JSON.parse(configJson)
+    let intro = config.introText
+    if (!intro || intro.length < 300 || intro.includes('nơi sức khỏe của bạn là ưu tiên số một. Chúng tôi cam kết đem lại dịch vụ khám chữa bệnh tốt nhất')) {
+      intro = hospitalIntro.value
+      // Upgrade local storage too if it exists
+      config.introText = intro
+      localStorage.setItem('hospitalConfig', JSON.stringify(config))
+    }
+    hospitalIntro.value = intro
+  }
+}
 
 function switchTab(tab) {
   activeTab.value = tab
@@ -123,7 +163,9 @@ const selectedSpecialty = ref('ALL')
 const selectedTitle = ref('ALL')
 const selectedDoctor = ref(null) // Detail modal
 
-const doctors = [
+const doctors = ref([])
+
+const fallbackDoctors = [
   { name: 'PGS.TS Nguyễn Văn An', title: 'PGS.TS', specialty: 'Tim mạch', experience: '25 năm kinh nghiệm', image: '/images/doctors/doctor1.png', dept: 'Khoa Tim Mạch', bio: 'Nguyên Phó Giám đốc Bệnh viện Tim, Giáo sư thỉnh giảng Đại học Y Hà Nội. Chuyên sâu về can thiệp tim mạch, điều trị suy tim và tăng huyết áp.', schedule: 'Thứ 2, Thứ 4, Thứ 6 (Sáng: 08:00 - 11:30)' },
   { name: 'TS.BS Trần Thị Mai', title: 'TS.BS', specialty: 'Sản phụ khoa', experience: '20 năm kinh nghiệm', image: '/images/doctors/doctor2.png', dept: 'Khoa Sản Phụ Khoa', bio: 'Tốt nghiệp Tiến sĩ tại Pháp. Hơn 20 năm kinh nghiệm trong chẩn đoán trước sinh và phẫu thuật phụ khoa nội soi phức tạp.', schedule: 'Thứ 3, Thứ 5 (Cả ngày: 08:00 - 16:30)' },
   { name: 'GS.TS Lê Hoàng Minh', title: 'GS.TS', specialty: 'Ngoại khoa', experience: '30 năm kinh nghiệm', image: '/images/doctors/doctor3.png', dept: 'Khoa Ngoại Tổng Quát', bio: 'Giáo sư đầu ngành ngoại khoa Việt Nam. Đã trực tiếp phẫu thuật thành công hàng ngàn ca ngoại tiêu hóa và chấn thương nặng.', schedule: 'Thứ 2, Thứ 5 (Sáng: 08:00 - 12:00)' },
@@ -132,11 +174,39 @@ const doctors = [
   { name: 'ThS.BS Trần Văn Bình', title: 'ThS.BS', specialty: 'Nội tổng quát', experience: '12 năm kinh nghiệm', image: '/images/doctors/doctor3.png', dept: 'Khoa Nội Tổng Quát', bio: 'Chuyên gia khám điều trị các bệnh lão khoa, xương khớp, tiểu đường và các bệnh chuyển hóa mãn tính ở người lớn tuổi.', schedule: 'Thứ 2 đến Thứ 7 (Hằng ngày)' }
 ]
 
+function extractTitle(name) {
+  const match = name.match(/^(GS\.TS|PGS\.TS|TS\.BS|ThS\.BS|BS\.CK[12]?|BS)/)
+  return match ? match[1] : 'BS'
+}
+
+function loadDoctors() {
+  const staffData = localStorage.getItem('hospitalStaff')
+  if (staffData) {
+    const staffList = JSON.parse(staffData)
+    const doctorStaff = staffList.filter(s => s.role === 'Bác sĩ chuyên khoa')
+    if (doctorStaff.length > 0) {
+      doctors.value = doctorStaff.map(s => ({
+        name: s.name,
+        title: extractTitle(s.name),
+        specialty: s.specialty,
+        experience: s.bio ? s.bio.substring(0, 30) + '...' : '10+ năm kinh nghiệm',
+        image: '/images/doctors/doctor1.png',
+        dept: 'Khoa ' + s.specialty,
+        bio: s.bio || 'Chưa cập nhật tiểu sử.',
+        schedule: s.schedule || 'Liên hệ để biết lịch khám',
+        room: s.room || ''
+      }))
+      return
+    }
+  }
+  doctors.value = fallbackDoctors
+}
+
 const specialties = ['ALL', 'Tim mạch', 'Nội tổng quát', 'Ngoại khoa', 'Sản phụ khoa', 'Nhi khoa', 'Mắt']
 const titles = ['ALL', 'GS.TS', 'PGS.TS', 'TS.BS', 'ThS.BS']
 
 const filteredDoctors = computed(() => {
-  return doctors.filter(d => {
+  return doctors.value.filter(d => {
     const matchesSearch = d.name.toLowerCase().includes(searchDocQuery.value.toLowerCase()) || d.bio.toLowerCase().includes(searchDocQuery.value.toLowerCase())
     const matchesSpecialty = selectedSpecialty.value === 'ALL' || d.specialty === selectedSpecialty.value
     const matchesTitle = selectedTitle.value === 'ALL' || d.title === selectedTitle.value
@@ -147,19 +217,18 @@ const filteredDoctors = computed(() => {
 
 <template>
   <div class="bg-gray-50 min-h-[calc(100vh-140px)] pb-16">
-    <!-- ==================== BANNER ==================== -->
-    <div class="bg-gradient-to-r from-primary-700 via-primary-600 to-primary-800 text-white py-12 md:py-16">
-      <div class="max-w-7xl mx-auto px-4 text-center">
-        <h1 class="text-4xl md:text-5xl font-bold mb-4">Giới Thiệu Bệnh Viện</h1>
-        <p class="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-          Tìm hiểu về sơ đồ bệnh viện, danh sách các khoa và đội ngũ y bác sĩ đầu ngành tận tâm.
-        </p>
-      </div>
-    </div>
 
     <!-- ==================== TAB NAVIGATION ==================== -->
     <div class="bg-white border-b border-gray-200 sticky top-[68px] sm:top-[72px] z-10 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 flex justify-between md:justify-center gap-1 overflow-x-auto">
+        <button
+          @click="switchTab('intro')"
+          class="flex-shrink-0 py-4 px-6 font-bold text-lg border-b-4 transition-all duration-200 flex items-center gap-2"
+          :class="activeTab === 'intro' ? 'border-primary-700 text-primary-700 bg-primary-50/50' : 'border-transparent text-gray-500 hover:text-primary-600'"
+        >
+          <i class="bi bi-info-circle text-xl"></i>
+          Giới Thiệu Chung
+        </button>
         <button
           @click="switchTab('map')"
           class="flex-shrink-0 py-4 px-6 font-bold text-lg border-b-4 transition-all duration-200 flex items-center gap-2"
@@ -190,20 +259,47 @@ const filteredDoctors = computed(() => {
     <!-- ==================== MAIN CONTENT AREA ==================== -->
     <div class="max-w-7xl mx-auto px-4 mt-8">
       
+      <!-- ==================== TAB: GIỚI THIỆU CHUNG ==================== -->
+      <div v-if="activeTab === 'intro'" class="animate-fade-in bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-gray-100 space-y-6">
+        <div class="prose max-w-none text-gray-700 leading-relaxed ProseMirror" v-html="hospitalIntro"></div>
+      </div>
+
       <!-- ==================== TAB: SƠ ĐỒ BỆNH VIỆN ==================== -->
       <div v-if="activeTab === 'map'" class="animate-fade-in space-y-6">
-        <!-- Search Map -->
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
-          <label for="search-map" class="block text-xl font-bold text-gray-700 mb-2">Tìm kiếm phòng/khoa khám nhanh:</label>
-          <div class="relative">
-            <input
-              id="search-map"
-              v-model="searchMapQuery"
-              type="text"
-              placeholder="Nhập tên phòng khám, tên khoa (Ví dụ: X-Quang, Cấp cứu, Tim mạch...)"
-              class="w-full pl-12 pr-4 py-4 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400"
-            />
-            <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400"></i>
+        <!-- Search and Floor Selector Row -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
+          <div class="flex flex-col md:flex-row gap-4 items-end">
+            <!-- Search Map -->
+            <div class="flex-1 w-full">
+              <label for="search-map" class="block text-base font-bold text-gray-700 mb-2">Tìm kiếm phòng/khoa khám nhanh:</label>
+              <div class="relative">
+                <input
+                  id="search-map"
+                  v-model="searchMapQuery"
+                  type="text"
+                  placeholder="Nhập tên phòng khám, tên khoa (Ví dụ: X-Quang, Cấp cứu, Tim mạch...)"
+                  class="w-full pl-12 pr-4 py-3.5 text-base rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400"
+                />
+                <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-lg text-gray-400"></i>
+              </div>
+            </div>
+
+            <!-- Floor Dropdown Selector -->
+            <div class="w-full md:w-72">
+              <label for="floor-select" class="block text-base font-bold text-gray-700 mb-2">Chọn tầng bệnh viện:</label>
+              <div class="relative">
+                <select
+                  id="floor-select"
+                  v-model="selectedFloor"
+                  class="w-full px-4 pr-10 py-3.5 text-base font-semibold text-gray-700 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all appearance-none cursor-pointer"
+                >
+                  <option v-for="(val, key) in floors" :key="key" :value="key">
+                    Tầng {{ key === 'G' ? 'Trệt (G)' : key }} - {{ val.name.split(' - ')[1] || val.name }}
+                  </option>
+                </select>
+                <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+              </div>
+            </div>
           </div>
           
           <!-- Search Results Dropdown -->
@@ -223,21 +319,6 @@ const filteredDoctors = computed(() => {
             </button>
           </div>
           <div v-else-if="searchMapQuery" class="mt-3 text-center text-gray-400 text-base">Không tìm thấy phòng/khoa phù hợp.</div>
-        </div>
-
-        <!-- Floor Selector Tabs -->
-        <div class="flex justify-center gap-3">
-          <button
-            v-for="(val, key) in floors"
-            :key="key"
-            @click="selectedFloor = key"
-            class="px-6 py-3.5 rounded-2xl font-bold text-lg border-2 transition-all"
-            :class="selectedFloor === key
-              ? 'bg-primary-700 text-white border-primary-700 shadow-md'
-              : 'bg-white text-gray-700 border-gray-200 hover:border-primary-400 hover:text-primary-700'"
-          >
-            Tầng {{ key === 'G' ? 'Trệt (G)' : key }}
-          </button>
         </div>
 
         <div class="text-center font-bold text-gray-800 text-xl">{{ floors[selectedFloor].name }}</div>
@@ -427,8 +508,7 @@ const filteredDoctors = computed(() => {
               </div>
             </div>
             
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-sm font-semibold text-primary-700">
-              <span class="text-xs text-gray-400">Lịch khám: {{ doc.schedule.split('(')[0] }}</span>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end items-center text-sm font-semibold text-primary-700">
               <span class="group-hover:translate-x-1 transition-transform">Thông tin chi tiết <i class="bi bi-arrow-right"></i></span>
             </div>
           </div>
@@ -523,14 +603,10 @@ const filteredDoctors = computed(() => {
             <p class="text-base text-gray-600 leading-relaxed">{{ selectedDoctor.bio }}</p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 gap-4">
             <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
               <h5 class="font-bold text-gray-700 mb-1"><i class="bi bi-award text-primary-600 mr-1.5"></i> Kinh nghiệm lâm sàng</h5>
               <p class="text-base text-gray-700">{{ selectedDoctor.experience }}</p>
-            </div>
-            <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-              <h5 class="font-bold text-gray-700 mb-1"><i class="bi bi-calendar-event text-primary-600 mr-1.5"></i> Lịch khám hành chính</h5>
-              <p class="text-base text-gray-700 font-semibold text-primary-800">{{ selectedDoctor.schedule }}</p>
             </div>
           </div>
         </div>
