@@ -107,12 +107,13 @@ function loadUser() {
 
 function loadStock() {
   const mockStock = [
-    { name: 'Panadol Extra 500mg', qty: 120, unit: 'Viên', expiryDate: '2027-06-30', minStock: 20, price: 2000 },
-    { name: 'Concor 2.5mg (Bisoprolol fumarate)', qty: 85, unit: 'Viên', expiryDate: '2026-09-15', minStock: 25, price: 8000 },
-    { name: 'Nexium mups 20mg', qty: 15, unit: 'Viên', expiryDate: '2027-11-20', minStock: 30, price: 15000 },
-    { name: 'Phosphalugel (Thuốc chữ P)', qty: 60, unit: 'Gói', expiryDate: '2026-08-01', minStock: 15, price: 6000 },
-    { name: 'Pharmaton Essential', qty: 45, unit: 'Viên', expiryDate: '2027-04-10', minStock: 20, price: 5000 },
-    { name: 'Amoxicillin 500mg', qty: 9, unit: 'Viên', expiryDate: '2027-09-30', minStock: 25, price: 3000 }
+    { name: 'Panadol Extra 500mg', qty: 120, heldQty: 0, unit: 'Viên', expiryDate: '2027-06-30', minStock: 20, price: 2000 },
+    { name: 'Concor 2.5mg (Bisoprolol fumarate)', qty: 85, heldQty: 0, unit: 'Viên', expiryDate: '2026-09-15', minStock: 25, price: 8000 },
+    { name: 'Nexium mups 20mg', qty: 15, heldQty: 0, unit: 'Viên', expiryDate: '2027-11-20', minStock: 30, price: 15000 },
+    { name: 'Phosphalugel (Thuốc chữ P)', qty: 60, heldQty: 0, unit: 'Gói', expiryDate: '2026-08-01', minStock: 15, price: 6000 },
+    { name: 'Pharmaton Essential', qty: 45, heldQty: 0, unit: 'Viên', expiryDate: '2027-04-10', minStock: 20, price: 5000 },
+    { name: 'Amoxicillin 500mg', qty: 9, heldQty: 0, unit: 'Viên', expiryDate: '2027-09-30', minStock: 25, price: 3000 },
+    { name: 'Siro ho Prospan (Chai)', qty: 30, heldQty: 0, unit: 'Chai', expiryDate: '2027-10-15', minStock: 5, price: 75000 }
   ]
   const data = localStorage.getItem('warehouseStock')
   if (data) {
@@ -120,10 +121,19 @@ function loadStock() {
     stock.value = parsed.map(item => {
       const match = mockStock.find(m => m.name.toLowerCase() === item.name.toLowerCase())
       return {
-        ...item,
-        price: item.price || (match ? match.price : 5000)
+        heldQty: 0,
+        price: 5000,
+        ...match,
+        ...item
       }
     })
+    if (!stock.value.some(s => s.name.toLowerCase().includes('siro ho'))) {
+      const siro = mockStock.find(m => m.name.includes('Siro ho'))
+      if (siro) {
+        stock.value.push(siro)
+        localStorage.setItem('warehouseStock', JSON.stringify(stock.value))
+      }
+    }
   } else {
     stock.value = mockStock
     localStorage.setItem('warehouseStock', JSON.stringify(mockStock))
@@ -478,9 +488,9 @@ function confirmDispenseAndCheckout() {
     list[idx].status = 'Đã nhận thuốc'
     
     // Deduct stock quantities from central warehouse
-    deductStock(list[idx].medicines)
+    deductStock(list[idx].medicines, true) // Prescribed medicines were held
     if (list[idx].extraMedicines) {
-      deductStock(list[idx].extraMedicines)
+      deductStock(list[idx].extraMedicines, false) // Extra medicines were not held
     }
 
     prescriptions.value = list
@@ -500,16 +510,69 @@ function confirmDispenseAndCheckout() {
   }
 }
 
-function deductStock(medicines) {
+function deductStock(medicines, isHeld = false) {
   let updatedStock = [...stock.value]
   medicines.forEach(med => {
     const targetIdx = updatedStock.findIndex(s => s.name.toLowerCase() === med.name.toLowerCase())
     if (targetIdx !== -1) {
       updatedStock[targetIdx].qty = Math.max(0, updatedStock[targetIdx].qty - med.qty)
+      if (isHeld) {
+        updatedStock[targetIdx].heldQty = Math.max(0, (updatedStock[targetIdx].heldQty || 0) - med.qty)
+      }
     }
   })
   stock.value = updatedStock
   localStorage.setItem('warehouseStock', JSON.stringify(updatedStock))
+}
+
+function requestPrescriptionEdit(reason) {
+  if (!activePrescription.value) return
+  
+  const p = activePrescription.value
+  
+  // 1. Release held stock quantities for all prescribed medicines
+  const stockData = localStorage.getItem('warehouseStock')
+  if (stockData) {
+    let warehouseStock = JSON.parse(stockData)
+    p.medicines.forEach(med => {
+      const stockItem = warehouseStock.find(s => s.name.toLowerCase() === med.name.toLowerCase())
+      if (stockItem) {
+        stockItem.heldQty = Math.max(0, (stockItem.heldQty || 0) - med.qty)
+      }
+    })
+    localStorage.setItem('warehouseStock', JSON.stringify(warehouseStock))
+    // Sync local stock value
+    stock.value = warehouseStock.map(item => {
+      const match = stock.value.find(s => s.name.toLowerCase() === item.name.toLowerCase())
+      return { ...match, ...item }
+    })
+  }
+
+  // 2. Set patient booking status to 'Yêu cầu sửa đơn'
+  const bookingsData = localStorage.getItem('patientBookings')
+  if (bookingsData) {
+    let bookingsList = JSON.parse(bookingsData)
+    // Find booking matching patientName or prescriptionCode
+    const bIdx = bookingsList.findIndex(b => b.prescriptionCode === p.code || b.fullName === p.patientName)
+    if (bIdx !== -1) {
+      bookingsList[bIdx].status = 'Yêu cầu sửa đơn'
+      bookingsList[bIdx].needEditReason = reason || 'Thiếu thuốc thực tế tại quầy'
+      localStorage.setItem('patientBookings', JSON.stringify(bookingsList))
+    }
+  }
+
+  // 3. Set prescription status to 'Yêu cầu sửa đơn'
+  const list = [...prescriptions.value]
+  const idx = list.findIndex(pr => pr.code === p.code)
+  if (idx !== -1) {
+    list[idx].status = 'Yêu cầu sửa đơn'
+    list[idx].needEditReason = reason || 'Thiếu thuốc thực tế tại quầy'
+    prescriptions.value = list
+    savePrescriptionsToStorage()
+  }
+
+  alert(`📢 Đã gửi yêu cầu sửa đơn thuốc cho Bác sĩ!\nLý do: ${reason}\nHàng giữ tạm thời đã được giải phóng.`)
+  resetDispenseFlow()
 }
 
 function savePrescriptionsToStorage() {
@@ -1099,12 +1162,23 @@ watch(prescriptions, () => {
 
               <!-- Navigation verification controls -->
               <div class="border-t border-blue-50 pt-5 flex justify-between items-center">
-                <button 
-                  @click="currentDispenseStep = 'detail'"
-                  class="py-2.5 px-5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl text-xs"
-                >
-                   Quay lại bước 1
-                </button>
+                <div class="flex gap-2">
+                  <button 
+                    @click="currentDispenseStep = 'detail'"
+                    class="py-2.5 px-5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl text-xs"
+                  >
+                     Quay lại bước 1
+                  </button>
+                  <button 
+                    @click="() => {
+                      const reason = prompt('Nhập lý do thiếu thuốc / yêu cầu sửa đơn:', 'Thiếu thuốc Panadol Extra 500mg thực tế tại quầy');
+                      if (reason) requestPrescriptionEdit(reason);
+                    }"
+                    class="py-2.5 px-5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 font-bold rounded-xl text-xs flex items-center gap-1.5"
+                  >
+                    <i class="bi bi-exclamation-triangle-fill text-rose-600"></i> Báo thiếu thuốc & Yêu cầu đổi đơn
+                  </button>
+                </div>
                 <button 
                   @click="proceedToPaymentStep"
                   class="py-3 px-6 bg-blue-600 hover:bg-blue-755 text-white font-bold rounded-2xl text-xs shadow-md flex items-center gap-1.5"

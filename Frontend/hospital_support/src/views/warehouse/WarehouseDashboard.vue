@@ -33,16 +33,33 @@ onMounted(() => {
 
 function loadStock() {
   const mockStock = [
-    { name: 'Panadol Extra 500mg', qty: 120, unit: 'Viên', expiryDate: '2027-06-30', minStock: 20 },
-    { name: 'Concor 2.5mg (Bisoprolol fumarate)', qty: 85, unit: 'Viên', expiryDate: '2026-09-15', minStock: 25 },
-    { name: 'Nexium mups 20mg', qty: 15, unit: 'Viên', expiryDate: '2027-11-20', minStock: 30 },
-    { name: 'Phosphalugel (Thuốc chữ P)', qty: 60, unit: 'Gói', expiryDate: '2026-08-01', minStock: 15 },
-    { name: 'Pharmaton Essential', qty: 45, unit: 'Viên', expiryDate: '2027-04-10', minStock: 20 },
-    { name: 'Amoxicillin 500mg', qty: 9, unit: 'Viên', expiryDate: '2027-09-30', minStock: 25 }
+    { name: 'Panadol Extra 500mg', qty: 120, heldQty: 0, unit: 'Viên', expiryDate: '2027-06-30', minStock: 20, price: 2000 },
+    { name: 'Concor 2.5mg (Bisoprolol fumarate)', qty: 85, heldQty: 0, unit: 'Viên', expiryDate: '2026-09-15', minStock: 25, price: 8000 },
+    { name: 'Nexium mups 20mg', qty: 15, heldQty: 0, unit: 'Viên', expiryDate: '2027-11-20', minStock: 30, price: 15000 },
+    { name: 'Phosphalugel (Thuốc chữ P)', qty: 60, heldQty: 0, unit: 'Gói', expiryDate: '2026-08-01', minStock: 15, price: 6000 },
+    { name: 'Pharmaton Essential', qty: 45, heldQty: 0, unit: 'Viên', expiryDate: '2027-04-10', minStock: 20, price: 5000 },
+    { name: 'Amoxicillin 500mg', qty: 9, heldQty: 0, unit: 'Viên', expiryDate: '2027-09-30', minStock: 25, price: 3000 },
+    { name: 'Siro ho Prospan (Chai)', qty: 30, heldQty: 0, unit: 'Chai', expiryDate: '2027-10-15', minStock: 5, price: 75000 }
   ]
   const data = localStorage.getItem('warehouseStock')
   if (data) {
-    stock.value = JSON.parse(data)
+    const parsed = JSON.parse(data)
+    stock.value = parsed.map(item => {
+      const match = mockStock.find(m => m.name.toLowerCase() === item.name.toLowerCase())
+      return {
+        heldQty: 0,
+        price: 5000,
+        ...match,
+        ...item
+      }
+    })
+    if (!stock.value.some(s => s.name.toLowerCase().includes('siro ho'))) {
+      const siro = mockStock.find(m => m.name.includes('Siro ho'))
+      if (siro) {
+        stock.value.push(siro)
+        localStorage.setItem('warehouseStock', JSON.stringify(stock.value))
+      }
+    }
   } else {
     stock.value = mockStock
     localStorage.setItem('warehouseStock', JSON.stringify(mockStock))
@@ -81,9 +98,11 @@ function submitImport() {
     list.push({
       name: f.name,
       qty: f.qty,
+      heldQty: 0,
       unit: f.unit,
       expiryDate: f.expiryDate,
-      minStock: f.minStock
+      minStock: f.minStock,
+      price: 5000
     })
   }
 
@@ -273,7 +292,8 @@ function quickRestock(name) {
               <thead>
                 <tr class="bg-gray-50 border-b border-gray-100 font-bold text-gray-500">
                   <th class="py-3.5 px-6">Tên dược phẩm</th>
-                  <th class="py-3.5 px-6 text-center">Tồn kho</th>
+                  <th class="py-3.5 px-6 text-center">Tồn vật lý (Tổng)</th>
+                  <th class="py-3.5 px-6 text-center">Khả dụng (Chưa khóa)</th>
                   <th class="py-3.5 px-6">Đơn vị</th>
                   <th class="py-3.5 px-6">Hạn sử dụng (HSD)</th>
                   <th class="py-3.5 px-6">Định mức an toàn</th>
@@ -283,8 +303,12 @@ function quickRestock(name) {
               <tbody class="divide-y divide-gray-100 text-gray-700">
                 <tr v-for="item in stock" :key="item.name" class="hover:bg-gray-50/30">
                   <td class="py-4 px-6 font-bold text-gray-850">{{ item.name }}</td>
-                  <td class="py-4 px-6 text-center font-bold" :class="item.qty <= item.minStock ? 'text-rose-600 font-black' : 'text-gray-800'">
-                    {{ item.qty }}
+                  <td class="py-4 px-6 text-center">
+                    <span class="font-bold text-gray-800">{{ item.qty }}</span>
+                    <span class="text-[10px] text-gray-400 block font-normal mt-0.5">(Đang khóa: {{ item.heldQty || 0 }})</span>
+                  </td>
+                  <td class="py-4 px-6 text-center text-indigo-700 font-black bg-indigo-50/20">
+                    {{ item.qty - (item.heldQty || 0) }}
                   </td>
                   <td class="py-4 px-6 text-gray-500 font-semibold">{{ item.unit }}</td>
                   <td class="py-4 px-6 font-mono text-xs">{{ item.expiryDate }}</td>

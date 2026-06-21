@@ -105,11 +105,27 @@ const filteredHistory = computed(() => {
   )
 })
 
+const currentPatientHistory = computed(() => {
+  if (!currentPatient.value) return []
+  const name = currentPatient.value.fullName.toLowerCase().trim()
+  return mockMedicalHistory.value.filter(h => h.patient.toLowerCase().trim() === name)
+})
+
+function loadMedicalHistory() {
+  const saved = localStorage.getItem('hospitalMedicalHistory')
+  if (saved) {
+    mockMedicalHistory.value = JSON.parse(saved)
+  } else {
+    localStorage.setItem('hospitalMedicalHistory', JSON.stringify(mockMedicalHistory.value))
+  }
+}
+
 /* ========== LIFECYCLE ========== */
 onMounted(() => {
   loadPatients()
   loadDoctorSchedule()
   loadProfile()
+  loadMedicalHistory()
   pollTimer = setInterval(() => { loadPatients() }, 2000)
 })
 onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
@@ -187,35 +203,129 @@ function finishWithResults() {
   completeExamination()
 }
 
+const editingPrescriptionCode = ref('')
+
+const pendingEditPatients = computed(() => {
+  return bookings.value.filter(b => b.status === 'Yêu cầu sửa đơn')
+})
+
+function loadPrescriptionForEdit(p) {
+  if (currentPatient.value) {
+    if (!confirm(`Bác sĩ đang khám cho bệnh nhân ${currentPatient.value.fullName}. Bạn có muốn tạm dừng để sửa đơn cho bệnh nhân ${p.fullName} không?`)) {
+      return
+    }
+  }
+
+  // Load prescription details
+  const presData = localStorage.getItem('patientPrescriptions')
+  if (presData) {
+    const list = JSON.parse(presData)
+    const foundPres = list.find(pr => pr.code === p.prescriptionCode)
+    if (foundPres) {
+      editingPrescriptionCode.value = foundPres.code
+      diagnose.value = foundPres.diagnose || ''
+      clinicalNotes.value = foundPres.clinicalNotes || ''
+      prescriptionList.value = [...foundPres.medicines]
+    }
+  }
+
+  // Set patient's booking status to 'Đang khám'
+  const list = [...bookings.value]
+  const idx = list.findIndex(b => b.id === p.id)
+  if (idx !== -1) {
+    list.forEach(b => {
+      if (b.status === 'Đang khám') b.status = 'Làn 1'
+      if (b.status === 'Đang đọc KQ') b.status = 'Làn 2'
+    })
+    list[idx].status = 'Đang khám'
+    bookings.value = list
+    localStorage.setItem('patientBookings', JSON.stringify(list))
+    alert(`📂 Đã tải bệnh án của bệnh nhân ${p.fullName} (Đơn thuốc: ${editingPrescriptionCode.value}) vào bảng làm việc. Vui lòng điều chỉnh đơn thuốc và lưu lại.`)
+  }
+}
+
 function completeExamination() {
   const patient = currentPatient.value
   if (!patient) return
 
+  // 1. Read central warehouseStock and validate availability
+  const stockData = localStorage.getItem('warehouseStock')
+  if (!stockData) {
+    alert('Hệ thống kho chưa khởi tạo! Vui lòng liên hệ thủ kho.')
+    return
+  }
+
+  let warehouseStock = JSON.parse(stockData)
+  
+  // Validate each medicine in the prescription list
+  for (const med of prescriptionList.value) {
+    const stockItem = warehouseStock.find(s => s.name.toLowerCase() === med.name.toLowerCase())
+    const available = stockItem ? (stockItem.qty - (stockItem.heldQty || 0)) : 0
+    if (available < med.qty) {
+      alert(`⚠️ Không đủ tồn kho khả dụng cho thuốc: "${med.name}"!\nSố lượng khả dụng trong kho: ${available} ${stockItem ? stockItem.unit : 'đơn vị'}.\nYêu cầu: ${med.qty}. Bác sĩ vui lòng điều chỉnh đơn thuốc!`)
+      return
+    }
+  }
+
+  // 2. Lock (Hold) the quantities in warehouseStock
+  prescriptionList.value.forEach(med => {
+    const stockItem = warehouseStock.find(s => s.name.toLowerCase() === med.name.toLowerCase())
+    if (stockItem) {
+      stockItem.heldQty = (stockItem.heldQty || 0) + med.qty
+    }
+  })
+  localStorage.setItem('warehouseStock', JSON.stringify(warehouseStock))
+
+  // 3. Mark booking as completed
   const list = [...bookings.value]
   const idx = list.findIndex(b => b.id === patient.id)
+  
+  // Generate or reuse prescription code
+  let prescriptionCode = editingPrescriptionCode.value
+  if (!prescriptionCode) {
+    prescriptionCode = 'DT-' + Math.floor(10000 + Math.random() * 90000)
+  }
+
   if (idx !== -1) {
     list[idx].status = 'Đã khám'
+    list[idx].prescriptionCode = prescriptionCode
     localStorage.setItem('patientBookings', JSON.stringify(list))
     bookings.value = list
   }
 
-  const prescriptionCode = 'DT-' + Math.floor(10000 + Math.random() * 90000)
-  const newPrescription = {
-    id: Date.now(),
-    code: prescriptionCode,
-    date: new Date().toLocaleDateString('vi-VN'),
-    patient: patient.fullName,
-    doctor: currentDoctorName.value,
-    diagnose: diagnose.value,
-    clinicalNotes: clinicalNotes.value,
-    status: 'Chờ gọi tên',
-    medicines: [...prescriptionList.value]
-  }
-
+  // 4. Save/Update prescription
   let currentPrescriptions = []
   const presData = localStorage.getItem('patientPrescriptions')
   if (presData) currentPrescriptions = JSON.parse(presData)
-  currentPrescriptions.unshift(newPrescription)
+
+  if (editingPrescriptionCode.value) {
+    // Update existing prescription in place
+    const pIdx = currentPrescriptions.findIndex(p => p.code === editingPrescriptionCode.value)
+    if (pIdx !== -1) {
+      currentPrescriptions[pIdx].diagnose = diagnose.value
+      currentPrescriptions[pIdx].clinicalNotes = clinicalNotes.value
+      currentPrescriptions[pIdx].medicines = [...prescriptionList.value]
+      currentPrescriptions[pIdx].status = 'Chờ gọi tên' // change status back
+    }
+  } else {
+    // Create new prescription
+    const newPrescription = {
+      id: Date.now(),
+      code: prescriptionCode,
+      date: new Date().toLocaleDateString('vi-VN'),
+      patient: patient.fullName,
+      patientAge: patient.patientAge || 35,
+      patientGender: patient.gender || 'Chưa rõ',
+      doctor: currentDoctorName.value,
+      diagnose: diagnose.value,
+      clinicalNotes: clinicalNotes.value,
+      status: 'Chờ gọi tên',
+      medicines: [...prescriptionList.value],
+      extraMedicines: [],
+      replacementRequests: []
+    }
+    currentPrescriptions.unshift(newPrescription)
+  }
   localStorage.setItem('patientPrescriptions', JSON.stringify(currentPrescriptions))
 
   // Add to history
@@ -227,8 +337,9 @@ function completeExamination() {
     treatment: prescriptionList.value.map(m => m.name).join(', ') || 'Không kê thuốc',
     lane: patient.status === 'Đang đọc KQ' ? 'Làn 2' : 'Làn 1'
   })
+  localStorage.setItem('hospitalMedicalHistory', JSON.stringify(mockMedicalHistory.value))
 
-  alert(`✅ Hoàn thành khám bệnh!\nBệnh nhân: ${patient.fullName}\nĐơn thuốc: ${prescriptionCode}\nĐã gửi sang quầy Dược sĩ.`)
+  alert(`✅ Hoàn thành khám bệnh!\nBệnh nhân: ${patient.fullName}\nĐơn thuốc: ${prescriptionCode}\nĐã khóa tạm thời số lượng và gửi quầy Dược sĩ.`)
   resetExamState()
 }
 
@@ -240,6 +351,7 @@ function resetExamState() {
   selectedMedicine.value = ''
   medicineQty.value = 10
   medicineUse.value = ''
+  editingPrescriptionCode.value = ''
 }
 
 /* ========== MEDICINE HELPERS ========== */
@@ -351,6 +463,26 @@ function onMedicineChange() {
         <!-- EXAMINATION WORKSPACE -->
         <div class="flex-1 p-6 md:p-8 overflow-y-auto">
 
+          <!-- PENDING EDIT REQUESTS BANNER -->
+          <div v-if="pendingEditPatients.length > 0" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6 animate-pulse">
+            <h3 class="text-sm font-bold text-rose-800 mb-3 flex items-center gap-2">
+              <i class="bi bi-exclamation-triangle-fill text-rose-600"></i>
+              Có {{ pendingEditPatients.length }} đơn thuốc bị Dược sĩ trả về yêu cầu sửa lại (do thiếu thuốc thực tế):
+            </h3>
+            <div class="space-y-2">
+              <div v-for="p in pendingEditPatients" :key="p.id" class="p-3.5 bg-white rounded-2xl border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <p class="font-bold text-gray-850">{{ p.fullName }} <span class="font-mono text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded ml-1">({{ p.prescriptionCode }})</span></p>
+                  <p class="text-rose-600 font-semibold mt-1"><i class="bi bi-exclamation-circle mr-1"></i>Lý do trả: {{ p.needEditReason || 'Thiếu thuốc thực tế tại quầy' }}</p>
+                  <p class="text-gray-400 text-[10px] mt-0.5">Triệu chứng ban đầu: {{ p.symptoms }}</p>
+                </div>
+                <button @click="loadPrescriptionForEdit(p)" class="py-1.5 px-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors flex items-center gap-1 flex-shrink-0">
+                  <i class="bi bi-pencil-square"></i> Tiến hành sửa đơn
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- NO PATIENT -->
           <div v-if="!currentPatient" class="flex flex-col items-center justify-center h-full text-center">
             <div class="w-28 h-28 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -390,144 +522,195 @@ function onMedicineChange() {
               </div>
             </div>
 
-            <!-- ===== LANE 1 WORKSPACE: KHÁM MỚI ===== -->
-            <div v-if="currentPatient.status === 'Đang khám'" class="space-y-6">
+            <!-- Workspaces and Patient History Layout -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+              
+              <!-- Left Column: Current Exam Workspace (Takes 2/3 width) -->
+              <div class="xl:col-span-2 space-y-6">
+                <!-- ===== LANE 1 WORKSPACE: KHÁM MỚI ===== -->
+                <div v-if="currentPatient.status === 'Đang khám'" class="space-y-6">
 
-              <!-- Clinical Notes -->
-              <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-blue-600"></i>Ghi chú lâm sàng</h3>
-                <textarea v-model="clinicalNotes" rows="3" placeholder="Ghi chú khám lâm sàng: huyết áp, nhịp tim, nghe phổi, khám bụng..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm resize-none"></textarea>
-              </div>
-
-              <!-- Subclinical Orders -->
-              <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="bi bi-droplet-half text-purple-600"></i>Chỉ định cận lâm sàng</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.bloodTest ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
-                    <input type="checkbox" v-model="subclinicals.bloodTest" class="w-4 h-4 accent-purple-600" />
-                    <div><span class="text-sm font-bold text-gray-800">🩸 Xét nghiệm máu</span><p class="text-[10px] text-gray-400">Công thức máu, sinh hóa</p></div>
-                  </label>
-                  <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.xray ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
-                    <input type="checkbox" v-model="subclinicals.xray" class="w-4 h-4 accent-purple-600" />
-                    <div><span class="text-sm font-bold text-gray-800">📷 X-Quang</span><p class="text-[10px] text-gray-400">Tim phổi, xương khớp</p></div>
-                  </label>
-                  <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.ultrasound ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
-                    <input type="checkbox" v-model="subclinicals.ultrasound" class="w-4 h-4 accent-purple-600" />
-                    <div><span class="text-sm font-bold text-gray-800">🔊 Siêu âm</span><p class="text-[10px] text-gray-400">Ổ bụng, tuyến giáp</p></div>
-                  </label>
-                  <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.ctscan ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
-                    <input type="checkbox" v-model="subclinicals.ctscan" class="w-4 h-4 accent-purple-600" />
-                    <div><span class="text-sm font-bold text-gray-800">🧠 CT-Scanner</span><p class="text-[10px] text-gray-400">Sọ não, ổ bụng</p></div>
-                  </label>
-                </div>
-                <button @click="sendForTests" class="mt-4 py-3 px-6 bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm rounded-xl shadow transition-all flex items-center gap-2">
-                  <i class="bi bi-send"></i> Gửi đi xét nghiệm → BN ra khỏi phòng
-                </button>
-                <p class="text-[10px] text-gray-400 mt-2 italic">BN sẽ đi xét nghiệm và tự động quay lại Làn 2 khi có kết quả.</p>
-              </div>
-
-              <!-- OR: Diagnose directly (no tests) -->
-              <div class="bg-white p-6 rounded-3xl border-2 border-dashed border-sky-200 shadow-sm">
-                <h3 class="text-base font-bold text-gray-800 mb-1 flex items-center gap-2"><i class="bi bi-lightning text-amber-500"></i>Hoặc: Chẩn đoán trực tiếp (không cần XN)</h3>
-                <p class="text-xs text-gray-400 mb-4">Nếu triệu chứng rõ ràng, bác sĩ có thể chẩn đoán và kê đơn ngay mà không cần gửi đi xét nghiệm.</p>
-
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Chẩn đoán bệnh *</label>
-                    <textarea v-model="diagnose" rows="2" placeholder="VD: Tăng huyết áp vô căn độ 1, suy nhược cơ thể..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm resize-none"></textarea>
+                  <!-- Clinical Notes -->
+                  <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                    <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-blue-600"></i>Ghi chú lâm sàng</h3>
+                    <textarea v-model="clinicalNotes" rows="3" placeholder="Ghi chú khám lâm sàng: huyết áp, nhịp tim, nghe phổi, khám bụng..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm resize-none"></textarea>
                   </div>
-                  <!-- Prescription -->
-                  <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Kê đơn thuốc</label>
-                    <div class="flex gap-2 flex-wrap">
-                      <select v-model="selectedMedicine" @change="onMedicineChange" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none">
-                        <option value="">-- Chọn thuốc --</option>
-                        <option v-for="m in medicineDirectory" :key="m.name" :value="m.name">{{ m.name }}</option>
-                      </select>
-                      <input v-model.number="medicineQty" type="number" min="1" class="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center focus:outline-none" />
-                      <input v-model="medicineUse" type="text" placeholder="Cách dùng..." class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none" />
-                      <button @click="addMedicine" class="py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-xl">+ Thêm</button>
+
+                  <!-- Subclinical Orders -->
+                  <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                    <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="bi bi-droplet-half text-purple-600"></i>Chỉ định cận lâm sàng</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.bloodTest ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
+                        <input type="checkbox" v-model="subclinicals.bloodTest" class="w-4 h-4 accent-purple-600" />
+                        <div><span class="text-sm font-bold text-gray-800">🩸 Xét nghiệm máu</span><p class="text-[10px] text-gray-400">Công thức máu, sinh hóa</p></div>
+                      </label>
+                      <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.xray ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
+                        <input type="checkbox" v-model="subclinicals.xray" class="w-4 h-4 accent-purple-600" />
+                        <div><span class="text-sm font-bold text-gray-800">📷 X-Quang</span><p class="text-[10px] text-gray-400">Tim phổi, xương khớp</p></div>
+                      </label>
+                      <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.ultrasound ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
+                        <input type="checkbox" v-model="subclinicals.ultrasound" class="w-4 h-4 accent-purple-600" />
+                        <div><span class="text-sm font-bold text-gray-800">🔊 Siêu âm</span><p class="text-[10px] text-gray-400">Ổ bụng, tuyến giáp</p></div>
+                      </label>
+                      <label class="flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all" :class="subclinicals.ctscan ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
+                        <input type="checkbox" v-model="subclinicals.ctscan" class="w-4 h-4 accent-purple-600" />
+                        <div><span class="text-sm font-bold text-gray-800">🧠 CT-Scanner</span><p class="text-[10px] text-gray-400">Sọ não, ổ bụng</p></div>
+                      </label>
+                    </div>
+                    <button @click="sendForTests" class="mt-4 py-3 px-6 bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm rounded-xl shadow transition-all flex items-center gap-2">
+                      <i class="bi bi-send"></i> Gửi đi xét nghiệm → BN ra khỏi phòng
+                    </button>
+                    <p class="text-[10px] text-gray-400 mt-2 italic">BN sẽ đi xét nghiệm và tự động quay lại Làn 2 khi có kết quả.</p>
+                  </div>
+
+                  <!-- OR: Diagnose directly (no tests) -->
+                  <div class="bg-white p-6 rounded-3xl border-2 border-dashed border-sky-200 shadow-sm">
+                    <h3 class="text-base font-bold text-gray-800 mb-1 flex items-center gap-2"><i class="bi bi-lightning text-amber-500"></i>Hoặc: Chẩn đoán trực tiếp (không cần XN)</h3>
+                    <p class="text-xs text-gray-400 mb-4">Nếu triệu chứng rõ ràng, bác sĩ có thể chẩn đoán và kê đơn ngay mà không cần gửi đi xét nghiệm.</p>
+
+                    <div class="space-y-4">
+                      <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Chẩn đoán bệnh *</label>
+                        <textarea v-model="diagnose" rows="2" placeholder="VD: Tăng huyết áp vô căn độ 1, suy nhược cơ thể..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm resize-none"></textarea>
+                      </div>
+                      <!-- Prescription -->
+                      <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Kê đơn thuốc</label>
+                        <div class="flex gap-2 flex-wrap">
+                          <select v-model="selectedMedicine" @change="onMedicineChange" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none">
+                            <option value="">-- Chọn thuốc --</option>
+                            <option v-for="m in medicineDirectory" :key="m.name" :value="m.name">{{ m.name }}</option>
+                          </select>
+                          <input v-model.number="medicineQty" type="number" min="1" class="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center focus:outline-none" />
+                          <input v-model="medicineUse" type="text" placeholder="Cách dùng..." class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none" />
+                          <button @click="addMedicine" class="py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-xl">+ Thêm</button>
+                        </div>
+                      </div>
+                      <div v-if="prescriptionList.length" class="bg-gray-50 p-4 rounded-xl border space-y-2">
+                        <div v-for="(m, i) in prescriptionList" :key="i" class="flex items-center justify-between text-sm">
+                          <span class="font-semibold text-gray-700">{{ i + 1 }}. {{ m.name }} — {{ m.qty }} {{ m.unit }}</span>
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400 italic">{{ m.use }}</span>
+                            <button @click="removeMedicine(i)" class="text-rose-500 hover:text-rose-700"><i class="bi bi-x-circle"></i></button>
+                          </div>
+                        </div>
+                      </div>
+                      <button @click="finishDirect" class="py-3 px-6 bg-sky-700 hover:bg-sky-800 text-white font-bold text-sm rounded-xl shadow transition-all flex items-center gap-2">
+                        <i class="bi bi-check-circle"></i> Hoàn thành khám & Kê đơn
+                      </button>
                     </div>
                   </div>
-                  <div v-if="prescriptionList.length" class="bg-gray-50 p-4 rounded-xl border space-y-2">
-                    <div v-for="(m, i) in prescriptionList" :key="i" class="flex items-center justify-between text-sm">
-                      <span class="font-semibold text-gray-700">{{ i + 1 }}. {{ m.name }} — {{ m.qty }} {{ m.unit }}</span>
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-400 italic">{{ m.use }}</span>
-                        <button @click="removeMedicine(i)" class="text-rose-500 hover:text-rose-700"><i class="bi bi-x-circle"></i></button>
+                </div>
+
+                <!-- ===== LANE 2 WORKSPACE: ĐỌC KẾT QUẢ & KÊ ĐƠN ===== -->
+                <div v-else-if="currentPatient.status === 'Đang đọc KQ'" class="space-y-6">
+
+                  <!-- Test Results -->
+                  <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                    <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="bi bi-file-earmark-medical text-emerald-600"></i>Kết quả cận lâm sàng</h3>
+                    <div class="space-y-3" v-if="currentPatient.testResults">
+                      <div v-if="currentPatient.testResults.bloodTest" class="p-4 bg-red-50 rounded-2xl border border-red-100">
+                        <h4 class="text-sm font-bold text-red-800 mb-1">🩸 Xét nghiệm máu</h4>
+                        <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.bloodTest }}</p>
+                      </div>
+                      <div v-if="currentPatient.testResults.xray" class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <h4 class="text-sm font-bold text-blue-800 mb-1">📷 X-Quang / Điện tim</h4>
+                        <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.xray }}</p>
+                      </div>
+                      <div v-if="currentPatient.testResults.ultrasound" class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                        <h4 class="text-sm font-bold text-amber-800 mb-1">🔊 Siêu âm</h4>
+                        <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.ultrasound }}</p>
+                      </div>
+                      <div v-if="currentPatient.testResults.ctscan" class="p-4 bg-purple-50 rounded-2xl border border-purple-100">
+                        <h4 class="text-sm font-bold text-purple-800 mb-1">🧠 CT-Scanner</h4>
+                        <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.ctscan }}</p>
                       </div>
                     </div>
+                    <div v-else class="p-4 bg-gray-50 rounded-xl text-center text-sm text-gray-400">Không có kết quả cận lâm sàng đính kèm.</div>
                   </div>
-                  <button @click="finishDirect" class="py-3 px-6 bg-sky-700 hover:bg-sky-800 text-white font-bold text-sm rounded-xl shadow transition-all flex items-center gap-2">
-                    <i class="bi bi-check-circle"></i> Hoàn thành khám & Kê đơn
-                  </button>
+
+                  <!-- Diagnose & Prescribe -->
+                  <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                    <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><i class="bi bi-prescription2 text-emerald-600"></i>Chẩn đoán & Kê đơn thuốc</h3>
+                    <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1.5">Chẩn đoán bệnh *</label>
+                      <textarea v-model="diagnose" rows="3" placeholder="VD: Rối loạn lipid máu, tăng huyết áp. Cần theo dõi định kỳ..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 text-sm resize-none"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1.5">Ghi chú thêm</label>
+                      <textarea v-model="clinicalNotes" rows="2" placeholder="Lời dặn bệnh nhân, chế độ ăn uống, tái khám..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 text-sm resize-none"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1.5">Kê đơn thuốc</label>
+                      <div class="flex gap-2 flex-wrap">
+                        <select v-model="selectedMedicine" @change="onMedicineChange" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none">
+                          <option value="">-- Chọn thuốc --</option>
+                          <option v-for="m in medicineDirectory" :key="m.name" :value="m.name">{{ m.name }}</option>
+                        </select>
+                        <input v-model.number="medicineQty" type="number" min="1" class="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center focus:outline-none" />
+                        <input v-model="medicineUse" type="text" placeholder="Cách dùng..." class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none" />
+                        <button @click="addMedicine" class="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl">+ Thêm</button>
+                      </div>
+                    </div>
+                    <div v-if="prescriptionList.length" class="bg-gray-50 p-4 rounded-xl border space-y-2">
+                      <div v-for="(m, i) in prescriptionList" :key="i" class="flex items-center justify-between text-sm">
+                        <span class="font-semibold text-gray-700">{{ i + 1 }}. {{ m.name }} — {{ m.qty }} {{ m.unit }}</span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-gray-400 italic">{{ m.use }}</span>
+                          <button @click="removeMedicine(i)" class="text-rose-500 hover:text-rose-700"><i class="bi bi-x-circle"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                    <button @click="finishWithResults" class="py-3 px-6 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow transition-all flex items-center gap-2">
+                      <i class="bi bi-check-circle"></i> Hoàn thành khám & Kê đơn
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- ===== LANE 2 WORKSPACE: ĐỌC KẾT QUẢ & KÊ ĐƠN ===== -->
-            <div v-else-if="currentPatient.status === 'Đang đọc KQ'" class="space-y-6">
+              <!-- Right Column: Medical History of Current Patient (Takes 1/3 width) -->
+              <div class="space-y-6">
+                <div class="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm flex flex-col">
+                  <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+                    <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                      <i class="bi bi-clock-history text-sky-650 text-base"></i>
+                      Lịch sử khám bệnh nhân
+                    </h3>
+                    <span class="text-[10px] font-bold px-2 py-0.5 bg-sky-50 text-sky-700 rounded-lg">
+                      {{ currentPatientHistory.length }} lần khám
+                    </span>
+                  </div>
 
-              <!-- Test Results -->
-              <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="bi bi-file-earmark-medical text-emerald-600"></i>Kết quả cận lâm sàng</h3>
-                <div class="space-y-3" v-if="currentPatient.testResults">
-                  <div v-if="currentPatient.testResults.bloodTest" class="p-4 bg-red-50 rounded-2xl border border-red-100">
-                    <h4 class="text-sm font-bold text-red-800 mb-1">🩸 Xét nghiệm máu</h4>
-                    <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.bloodTest }}</p>
-                  </div>
-                  <div v-if="currentPatient.testResults.xray" class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                    <h4 class="text-sm font-bold text-blue-800 mb-1">📷 X-Quang / Điện tim</h4>
-                    <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.xray }}</p>
-                  </div>
-                  <div v-if="currentPatient.testResults.ultrasound" class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                    <h4 class="text-sm font-bold text-amber-800 mb-1">🔊 Siêu âm</h4>
-                    <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.ultrasound }}</p>
-                  </div>
-                  <div v-if="currentPatient.testResults.ctscan" class="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                    <h4 class="text-sm font-bold text-purple-800 mb-1">🧠 CT-Scanner</h4>
-                    <p class="text-sm text-gray-700 leading-relaxed">{{ currentPatient.testResults.ctscan }}</p>
-                  </div>
-                </div>
-                <div v-else class="p-4 bg-gray-50 rounded-xl text-center text-sm text-gray-400">Không có kết quả cận lâm sàng đính kèm.</div>
-              </div>
+                  <!-- History Timeline -->
+                  <div class="overflow-y-auto max-h-[500px] space-y-4 pr-1">
+                    <div v-for="(h, idx) in currentPatientHistory" :key="idx" class="relative pl-6 pb-2 border-l border-gray-150 last:pb-0">
+                      <!-- Timeline dot -->
+                      <span class="absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full bg-sky-500 border border-white"></span>
+                      
+                      <div class="text-[11px] text-gray-400 font-mono flex items-center justify-between mb-1">
+                        <span>{{ h.date }}</span>
+                        <span class="font-bold px-1.5 py-0.5 rounded text-[9px]" :class="h.lane === 'Làn 2' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'">
+                          {{ h.lane || 'Làn 1' }}
+                        </span>
+                      </div>
+                      
+                      <h4 class="text-xs font-bold text-gray-800">Chẩn đoán: {{ h.diagnose }}</h4>
+                      <p class="text-[11px] text-gray-500 mt-1">
+                        <strong class="text-gray-655">Bác sĩ:</strong> {{ h.doctor }}
+                      </p>
+                      <p class="text-[11px] text-gray-600 mt-0.5 italic">
+                        <strong class="text-gray-655">Điều trị:</strong> {{ h.treatment }}
+                      </p>
+                    </div>
 
-              <!-- Diagnose & Prescribe -->
-              <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><i class="bi bi-prescription2 text-emerald-600"></i>Chẩn đoán & Kê đơn thuốc</h3>
-                <div>
-                  <label class="block text-sm font-semibold text-gray-700 mb-1.5">Chẩn đoán bệnh *</label>
-                  <textarea v-model="diagnose" rows="3" placeholder="VD: Rối loạn lipid máu, tăng huyết áp. Cần theo dõi định kỳ..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 text-sm resize-none"></textarea>
-                </div>
-                <div>
-                  <label class="block text-sm font-semibold text-gray-700 mb-1.5">Ghi chú thêm</label>
-                  <textarea v-model="clinicalNotes" rows="2" placeholder="Lời dặn bệnh nhân, chế độ ăn uống, tái khám..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 text-sm resize-none"></textarea>
-                </div>
-                <div>
-                  <label class="block text-sm font-semibold text-gray-700 mb-1.5">Kê đơn thuốc</label>
-                  <div class="flex gap-2 flex-wrap">
-                    <select v-model="selectedMedicine" @change="onMedicineChange" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none">
-                      <option value="">-- Chọn thuốc --</option>
-                      <option v-for="m in medicineDirectory" :key="m.name" :value="m.name">{{ m.name }}</option>
-                    </select>
-                    <input v-model.number="medicineQty" type="number" min="1" class="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center focus:outline-none" />
-                    <input v-model="medicineUse" type="text" placeholder="Cách dùng..." class="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none" />
-                    <button @click="addMedicine" class="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl">+ Thêm</button>
-                  </div>
-                </div>
-                <div v-if="prescriptionList.length" class="bg-gray-50 p-4 rounded-xl border space-y-2">
-                  <div v-for="(m, i) in prescriptionList" :key="i" class="flex items-center justify-between text-sm">
-                    <span class="font-semibold text-gray-700">{{ i + 1 }}. {{ m.name }} — {{ m.qty }} {{ m.unit }}</span>
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-gray-400 italic">{{ m.use }}</span>
-                      <button @click="removeMedicine(i)" class="text-rose-500 hover:text-rose-700"><i class="bi bi-x-circle"></i></button>
+                    <div v-if="currentPatientHistory.length === 0" class="text-center py-8 text-gray-400">
+                      <i class="bi bi-file-earmark-medical text-3xl text-gray-300 block mb-2"></i>
+                      <p class="text-xs">Chưa có lịch sử khám trước đó trên hệ thống</p>
                     </div>
                   </div>
                 </div>
-                <button @click="finishWithResults" class="py-3 px-6 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow transition-all flex items-center gap-2">
-                  <i class="bi bi-check-circle"></i> Hoàn thành khám & Kê đơn
-                </button>
               </div>
+
             </div>
 
           </div>
