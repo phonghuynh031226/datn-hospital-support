@@ -1,31 +1,42 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-const activeMenu = ref('catalog') // catalog, actions, warnings, suppliers, reports
+const activeMenu = ref('catalog') // catalog (xem ton kho), import (nhap lo), classification (phan loai), expiry (bao cao het han)
 const stock = ref([])
-const showImportModal = ref(false)
-const showExportModal = ref(false)
 
-// Mock suppliers list
+// Mock suppliers list for selection during import
 const suppliers = ref([
   { id: 1, name: 'Dược phẩm TW1 (Pharmedic)', contact: 'Bà Nguyễn Thị Hoa', phone: '028 3829 1234', address: 'Quận 1, TP.HCM' },
   { id: 2, name: 'Công ty cổ phần Traphaco', contact: 'Ông Trần Văn Nam', phone: '024 3766 2288', address: 'Quận Hoàng Mai, Hà Nội' },
   { id: 3, name: 'Dược Hậu Giang (DHG Pharma)', contact: 'Bà Lê Thu Trang', phone: '0292 3891 433', address: 'Bình Thủy, Cần Thơ' }
 ])
 
-// Stats
+// Stats variables
 const stats = ref({
   totalItems: 0,
   totalQty: 0,
   nearExpiry: 0,
-  lowStock: 0
+  expiredCount: 0
 })
 
+// Search & Filter state
+const searchQuery = ref('')
+const selectedCategoryFilter = ref('Tất cả')
+
 // Forms
-const importForm = ref({ name: '', qty: 50, unit: 'Viên', expiryDate: '2027-12-31', minStock: 20, supplier: 'Dược phẩm TW1 (Pharmedic)' })
-const exportForm = ref({ name: 'Panadol Extra 500mg', qty: 20, reason: 'Cấp phát cho quầy Dược sĩ' })
-const newSupplierForm = ref({ name: '', contact: '', phone: '', address: '' })
-const showAddSupplierModal = ref(false)
+const importForm = ref({
+  name: '',
+  qty: 50,
+  unit: 'Viên',
+  expiryDate: '2027-12-31',
+  minStock: 20,
+  supplier: 'Dược phẩm TW1 (Pharmedic)',
+  category: 'Giảm đau & Hạ sốt',
+  price: 5000
+})
+
+const classMedName = ref('')
+const classCategory = ref('')
 
 onMounted(() => {
   loadStock()
@@ -33,13 +44,13 @@ onMounted(() => {
 
 function loadStock() {
   const mockStock = [
-    { name: 'Panadol Extra 500mg', qty: 120, heldQty: 0, unit: 'Viên', expiryDate: '2027-06-30', minStock: 20, price: 2000 },
-    { name: 'Concor 2.5mg (Bisoprolol fumarate)', qty: 85, heldQty: 0, unit: 'Viên', expiryDate: '2026-09-15', minStock: 25, price: 8000 },
-    { name: 'Nexium mups 20mg', qty: 15, heldQty: 0, unit: 'Viên', expiryDate: '2027-11-20', minStock: 30, price: 15000 },
-    { name: 'Phosphalugel (Thuốc chữ P)', qty: 60, heldQty: 0, unit: 'Gói', expiryDate: '2026-08-01', minStock: 15, price: 6000 },
-    { name: 'Pharmaton Essential', qty: 45, heldQty: 0, unit: 'Viên', expiryDate: '2027-04-10', minStock: 20, price: 5000 },
-    { name: 'Amoxicillin 500mg', qty: 9, heldQty: 0, unit: 'Viên', expiryDate: '2027-09-30', minStock: 25, price: 3000 },
-    { name: 'Siro ho Prospan (Chai)', qty: 30, heldQty: 0, unit: 'Chai', expiryDate: '2027-10-15', minStock: 5, price: 75000 }
+    { name: 'Panadol Extra 500mg', qty: 120, heldQty: 0, unit: 'Viên', expiryDate: '2027-06-30', minStock: 20, price: 2000, category: 'Giảm đau & Hạ sốt' },
+    { name: 'Concor 2.5mg (Bisoprolol fumarate)', qty: 85, heldQty: 0, unit: 'Viên', expiryDate: '2026-09-15', minStock: 25, price: 8000, category: 'Tim mạch' },
+    { name: 'Nexium mups 20mg', qty: 15, heldQty: 0, unit: 'Viên', expiryDate: '2027-11-20', minStock: 30, price: 15000, category: 'Dạ dày & Tiêu hóa' },
+    { name: 'Phosphalugel (Thuốc chữ P)', qty: 60, heldQty: 0, unit: 'Gói', expiryDate: '2026-08-01', minStock: 15, price: 6000, category: 'Dạ dày & Tiêu hóa' },
+    { name: 'Pharmaton Essential', qty: 45, heldQty: 0, unit: 'Viên', expiryDate: '2027-04-10', minStock: 20, price: 5000, category: 'Vitamin & Bổ dưỡng' },
+    { name: 'Amoxicillin 500mg', qty: 9, heldQty: 0, unit: 'Viên', expiryDate: '2027-09-30', minStock: 25, price: 3000, category: 'Kháng sinh' },
+    { name: 'Siro ho Prospan (Chai)', qty: 30, heldQty: 0, unit: 'Chai', expiryDate: '2027-10-15', minStock: 5, price: 75000, category: 'Hô hấp' }
   ]
   const data = localStorage.getItem('warehouseStock')
   if (data) {
@@ -49,6 +60,7 @@ function loadStock() {
       return {
         heldQty: 0,
         price: 5000,
+        category: 'Khác',
         ...match,
         ...item
       }
@@ -72,37 +84,85 @@ function calculateStats() {
   stats.value.totalItems = list.length
   stats.value.totalQty = list.reduce((sum, item) => sum + item.qty, 0)
   
-  // Expiry rule: expiration before 2026-10-01
+  const today = new Date()
+  const limit = new Date()
+  limit.setMonth(today.getMonth() + 6) // within 6 months
+
   stats.value.nearExpiry = list.filter(item => {
     const exp = new Date(item.expiryDate)
-    const limit = new Date('2026-10-01')
-    return exp <= limit
+    return exp > today && exp <= limit
   }).length
 
-  stats.value.lowStock = list.filter(item => item.qty <= item.minStock).length
+  stats.value.expiredCount = list.filter(item => {
+    const exp = new Date(item.expiryDate)
+    return exp <= today
+  }).length
 }
+
+const categories = computed(() => {
+  const cats = new Set(stock.value.map(s => s.category || 'Khác'))
+  return ['Tất cả', ...Array.from(cats)]
+})
+
+const categoriesWithoutAll = computed(() => {
+  const cats = new Set(stock.value.map(s => s.category || 'Khác'))
+  return Array.from(cats)
+})
+
+const filteredStock = computed(() => {
+  return stock.value.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    const matchCat = selectedCategoryFilter.value === 'Tất cả' || (s.category || 'Khác') === selectedCategoryFilter.value
+    return matchSearch && matchCat
+  })
+})
+
+const expiredList = computed(() => {
+  const today = new Date()
+  return stock.value.filter(item => {
+    const exp = new Date(item.expiryDate)
+    return exp <= today
+  })
+})
+
+const nearExpiryList = computed(() => {
+  const today = new Date()
+  const limit = new Date()
+  limit.setMonth(today.getMonth() + 6)
+  return stock.value.filter(item => {
+    const exp = new Date(item.expiryDate)
+    return exp > today && exp <= limit
+  })
+})
 
 function submitImport() {
   const f = importForm.value
-  if (!f.name) {
-    alert('Vui lòng nhập tên thuốc!')
+  if (!f.name.trim()) {
+    alert('Vui lòng nhập tên dược phẩm!')
+    return
+  }
+  if (f.qty <= 0) {
+    alert('Số lượng nhập lô phải lớn hơn 0!')
     return
   }
   const list = [...stock.value]
-  const idx = list.findIndex(item => item.name.toLowerCase() === f.name.toLowerCase())
+  const idx = list.findIndex(item => item.name.toLowerCase() === f.name.trim().toLowerCase())
 
   if (idx !== -1) {
     list[idx].qty += f.qty
     list[idx].expiryDate = f.expiryDate
+    if (f.category) list[idx].category = f.category
+    if (f.price) list[idx].price = f.price
   } else {
     list.push({
-      name: f.name,
+      name: f.name.trim(),
       qty: f.qty,
       heldQty: 0,
       unit: f.unit,
       expiryDate: f.expiryDate,
       minStock: f.minStock,
-      price: 5000
+      price: f.price || 5000,
+      category: f.category || 'Khác'
     })
   }
 
@@ -110,50 +170,39 @@ function submitImport() {
   stock.value = list
   calculateStats()
   
-  importForm.value = { name: '', qty: 50, unit: 'Viên', expiryDate: '2027-12-31', minStock: 20, supplier: 'Dược phẩm TW1 (Pharmedic)' }
-  showImportModal.value = false
-  alert('Nhập kho thuốc thành công!')
-}
-
-function submitExport() {
-  const f = exportForm.value
-  const list = [...stock.value]
-  const idx = list.findIndex(item => item.name === f.name)
-  if (idx !== -1) {
-    if (list[idx].qty < f.qty) {
-      alert('Số lượng tồn kho không đủ để xuất!')
-      return
-    }
-    list[idx].qty -= f.qty
-    localStorage.setItem('warehouseStock', JSON.stringify(list))
-    stock.value = list
-    calculateStats()
-    showExportModal.value = false
-    alert(`Đã xuất kho thành công ${f.qty} ${list[idx].unit} thuốc ${f.name} cấp cho Quầy dược sĩ!`)
+  // Reset form
+  importForm.value = {
+    name: '',
+    qty: 50,
+    unit: 'Viên',
+    expiryDate: '2027-12-31',
+    minStock: 20,
+    supplier: 'Dược phẩm TW1 (Pharmedic)',
+    category: 'Giảm đau & Hạ sốt',
+    price: 5000
   }
+  alert('🎉 Đã xác nhận nhập kho lô thuốc thành công!')
 }
 
-function addSupplier() {
-  const f = newSupplierForm.value
-  if (!f.name) {
-    alert('Vui lòng nhập tên nhà cung cấp!')
+function updateClassification() {
+  if (!classMedName.value) {
+    alert('Vui lòng chọn thuốc cần phân loại!')
     return
   }
-  suppliers.value.push({
-    id: Date.now(),
-    name: f.name,
-    contact: f.contact || 'Chưa cập nhật',
-    phone: f.phone || 'Chưa cập nhật',
-    address: f.address || 'Chưa cập nhật'
-  })
-  newSupplierForm.value = { name: '', contact: '', phone: '', address: '' }
-  showAddSupplierModal.value = false
-  alert('Đã thêm nhà cung cấp dược phẩm mới!')
-}
-
-function removeSupplier(id) {
-  if (confirm('Xóa nhà cung cấp này khỏi danh sách?')) {
-    suppliers.value = suppliers.value.filter(s => s.id !== id)
+  if (!classCategory.value.trim()) {
+    alert('Vui lòng điền tên phân loại/nhóm thuốc!')
+    return
+  }
+  
+  const list = [...stock.value]
+  const idx = list.findIndex(s => s.name === classMedName.value)
+  if (idx !== -1) {
+    list[idx].category = classCategory.value.trim()
+    stock.value = list
+    localStorage.setItem('warehouseStock', JSON.stringify(list))
+    alert(`🏷️ Đã phân loại thành công thuốc "${classMedName.value}" vào nhóm "${classCategory.value.trim()}".`)
+    classMedName.value = ''
+    classCategory.value = ''
   }
 }
 
@@ -165,7 +214,7 @@ function quickRestock(name) {
     localStorage.setItem('warehouseStock', JSON.stringify(list))
     stock.value = list
     calculateStats()
-    alert(`Nhập bổ sung nhanh 100 đơn vị cho thuốc ${name}!`)
+    alert(`⚡ Nhập nhanh bổ sung 100 đơn vị cho thuốc ${name}!`)
   }
 }
 </script>
@@ -193,97 +242,108 @@ function quickRestock(name) {
           <button 
             @click="activeMenu = 'catalog'"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all"
-            :class="activeMenu === 'catalog' ? 'bg-amber-50 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
+            :class="activeMenu === 'catalog' ? 'bg-amber-50 text-amber-850 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
-            <i class="bi bi-box text-lg"></i>
-            Danh mục & Hạn dùng
+            <i class="bi bi-box-seam text-lg"></i>
+            Xem tồn kho thuốc
           </button>
           
           <button 
-            @click="activeMenu = 'actions'"
+            @click="activeMenu = 'import'"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all"
-            :class="activeMenu === 'actions' ? 'bg-amber-50 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
+            :class="activeMenu === 'import' ? 'bg-amber-50 text-amber-850 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
-            <i class="bi bi-arrow-down-up text-lg"></i>
-            Nhập / Xuất kho thuốc
+            <i class="bi bi-file-earmark-plus text-lg"></i>
+            Nhập lô thuốc
           </button>
 
           <button 
-            @click="activeMenu = 'warnings'"
+            @click="activeMenu = 'classification'"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all"
-            :class="activeMenu === 'warnings' ? 'bg-amber-50 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
+            :class="activeMenu === 'classification' ? 'bg-amber-50 text-amber-850 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
-            <i class="bi bi-exclamation-triangle text-lg"></i>
-            Cảnh báo an toàn kho
+            <i class="bi bi-tags text-lg"></i>
+            Phân loại thuốc
           </button>
 
           <button 
-            @click="activeMenu = 'suppliers'"
+            @click="activeMenu = 'expiry'"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all"
-            :class="activeMenu === 'suppliers' ? 'bg-amber-50 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
+            :class="activeMenu === 'expiry' ? 'bg-amber-50 text-amber-850 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
-            <i class="bi bi-truck text-lg"></i>
-            Nhà cung cấp dược
-          </button>
-
-          <button 
-            @click="activeMenu = 'reports'"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all"
-            :class="activeMenu === 'reports' ? 'bg-amber-50 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
-          >
-            <i class="bi bi-bar-chart-steps text-lg"></i>
-            Báo cáo xuất nhập tồn
+            <i class="bi bi-calendar-x-fill text-lg text-rose-600"></i>
+            Báo cáo thuốc hết hạn
           </button>
         </nav>
       </div>
 
       <div class="p-2 border-t text-xs text-gray-400 text-center">
-        Hospital Inventory v2.0
+        Hospital Inventory v3.0
       </div>
     </aside>
 
     <!-- Main Content Area -->
     <main class="flex-1 p-6 md:p-8 overflow-y-auto">
       
-      <!-- Statistics summary boxes (shown at the top of main content) -->
+      <!-- Statistics summary boxes customized for the warehouse keeper roles -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <span class="text-xs text-gray-400 font-bold uppercase">Tổng Số Mặt Hàng</span>
             <h4 class="text-2xl font-black text-amber-700 mt-1">{{ stats.totalItems }}</h4>
           </div>
-          <span class="text-3xl">📦</span>
+          <span class="text-3xl">💊</span>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <span class="text-xs text-gray-400 font-bold uppercase">Tổng Tồn Kho</span>
             <h4 class="text-2xl font-black text-gray-800 mt-1">{{ stats.totalQty }}</h4>
           </div>
-          <span class="text-3xl">📊</span>
+          <span class="text-3xl">📦</span>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"
-             :class="stats.lowStock > 0 ? 'bg-rose-50/40 border-rose-100' : ''">
+             :class="stats.expiredCount > 0 ? 'bg-rose-50 border-rose-200' : ''">
           <div>
-            <span class="text-xs text-gray-400 font-bold uppercase">Sắp Hết Hàng</span>
-            <h4 class="text-2xl font-black text-rose-600 mt-1">{{ stats.lowStock }}</h4>
+            <span class="text-xs text-gray-400 font-bold uppercase">Đã Hết Hạn</span>
+            <h4 class="text-2xl font-black text-rose-600 mt-1">{{ stats.expiredCount }}</h4>
           </div>
-          <span class="text-3xl text-rose-500">⚠️</span>
+          <span class="text-3xl">🚨</span>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"
-             :class="stats.nearExpiry > 0 ? 'bg-amber-50/40 border-amber-100' : ''">
+             :class="stats.nearExpiry > 0 ? 'bg-amber-50 border-amber-200' : ''">
           <div>
-            <span class="text-xs text-gray-400 font-bold uppercase">Sắp Hết Hạn</span>
+            <span class="text-xs text-gray-400 font-bold uppercase">Cận Hạn (6T)</span>
             <h4 class="text-2xl font-black text-amber-600 mt-1">{{ stats.nearExpiry }}</h4>
           </div>
-          <span class="text-3xl text-amber-500">⏳</span>
+          <span class="text-3xl">⏳</span>
         </div>
       </div>
 
-      <!-- ==================== MENU 1: CATALOG & EXPIRY ==================== -->
+      <!-- ==================== MENU 1: VIEW INVENTORY (XEM TỒN KHO) ==================== -->
       <div v-if="activeMenu === 'catalog'" class="space-y-6 animate-fade-in">
-        <div>
-          <h2 class="text-2xl font-black text-gray-800">Danh mục thuốc & Hạn sử dụng</h2>
-          <p class="text-sm text-gray-400">Danh sách toàn bộ dược phẩm lưu trữ tại kho trung tâm.</p>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black text-gray-800">Tồn kho dược phẩm thực tế</h2>
+            <p class="text-sm text-gray-400">Xem tồn kho vật lý, hàng giữ chỗ khả dụng và hạn dùng.</p>
+          </div>
+          <!-- Search & Filter Controls -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="relative w-64">
+              <input 
+                v-model="searchQuery" 
+                type="text" 
+                placeholder="Tìm tên thuốc..." 
+                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200" 
+              />
+              <i class="bi bi-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+            </div>
+            <select 
+              v-model="selectedCategoryFilter" 
+              class="px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none bg-white"
+            >
+              <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
@@ -291,286 +351,264 @@ function quickRestock(name) {
             <table class="w-full text-left border-collapse text-sm">
               <thead>
                 <tr class="bg-gray-50 border-b border-gray-100 font-bold text-gray-500">
-                  <th class="py-3.5 px-6">Tên dược phẩm</th>
-                  <th class="py-3.5 px-6 text-center">Tồn vật lý (Tổng)</th>
-                  <th class="py-3.5 px-6 text-center">Khả dụng (Chưa khóa)</th>
+                  <th class="py-3.5 px-6">Tên thuốc</th>
+                  <th class="py-3.5 px-6">Nhóm phân loại</th>
+                  <th class="py-3.5 px-6 text-center">Tồn kho vật lý</th>
+                  <th class="py-3.5 px-6 text-center">Khả dụng (Để kê)</th>
                   <th class="py-3.5 px-6">Đơn vị</th>
-                  <th class="py-3.5 px-6">Hạn sử dụng (HSD)</th>
-                  <th class="py-3.5 px-6">Định mức an toàn</th>
-                  <th class="py-3.5 px-6 text-center">Nhập bổ sung nhanh</th>
+                  <th class="py-3.5 px-6">Hạn dùng (HSD)</th>
+                  <th class="py-3.5 px-6 text-center">Bổ sung nhanh</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 text-gray-700">
-                <tr v-for="item in stock" :key="item.name" class="hover:bg-gray-50/30">
+                <tr v-for="item in filteredStock" :key="item.name" class="hover:bg-gray-50/30">
                   <td class="py-4 px-6 font-bold text-gray-850">{{ item.name }}</td>
+                  <td class="py-4 px-6">
+                    <span class="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg">
+                      {{ item.category || 'Khác' }}
+                    </span>
+                  </td>
                   <td class="py-4 px-6 text-center">
                     <span class="font-bold text-gray-800">{{ item.qty }}</span>
-                    <span class="text-[10px] text-gray-400 block font-normal mt-0.5">(Đang khóa: {{ item.heldQty || 0 }})</span>
+                    <span class="text-[10px] text-gray-400 block font-normal mt-0.5">(Giữ chỗ: {{ item.heldQty || 0 }})</span>
                   </td>
-                  <td class="py-4 px-6 text-center text-indigo-700 font-black bg-indigo-50/20">
+                  <td class="py-4 px-6 text-center text-amber-800 font-black bg-amber-50/20">
                     {{ item.qty - (item.heldQty || 0) }}
                   </td>
                   <td class="py-4 px-6 text-gray-500 font-semibold">{{ item.unit }}</td>
                   <td class="py-4 px-6 font-mono text-xs">{{ item.expiryDate }}</td>
-                  <td class="py-4 px-6 text-gray-400 font-medium">{{ item.minStock }}</td>
                   <td class="py-4 px-6 text-center">
                     <button @click="quickRestock(item.name)" class="py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition-all">
                       +100 bổ sung
                     </button>
                   </td>
                 </tr>
+                <tr v-if="filteredStock.length === 0">
+                  <td colspan="7" class="py-8 text-center text-gray-400 text-xs">Không tìm thấy thuốc nào khớp bộ lọc</td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ==================== MENU 2: IMPORT / EXPORT ==================== -->
-      <div v-else-if="activeMenu === 'actions'" class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
-        <!-- Nhập kho -->
+      <!-- ==================== MENU 2: IMPORT BATCH (NHẬP LÔ THUỐC) ==================== -->
+      <div v-else-if="activeMenu === 'import'" class="max-w-xl mx-auto animate-fade-in">
         <div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-4">
           <h3 class="text-xl font-bold text-gray-850 flex items-center gap-2 border-b pb-3">
-            <span class="text-2xl">📥</span> Phiếu Nhập Kho Thuốc
+            <i class="bi bi-box-arrow-in-down text-amber-700 text-2xl"></i> Phiếu Nhập Lô Thuốc Mới
           </h3>
+          <p class="text-xs text-gray-400">Ghi nhận thông tin nhập kho lô thuốc, HSD và phân nhóm ban đầu.</p>
+          
           <form @submit.prevent="submitImport" class="space-y-4 text-sm">
             <div>
-              <label for="med-name-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Tên thuốc nhập</label>
-              <input id="med-name-in" type="text" v-model="importForm.name" required class="w-full px-3 py-2 border rounded-xl" placeholder="Tên thuốc..." />
+              <label for="med-name-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Tên thuốc nhập kho</label>
+              <input id="med-name-in" type="text" v-model="importForm.name" required class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl" placeholder="Ví dụ: Panadol Extra 500mg, Amoxicillin..." />
             </div>
+
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="med-qty-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Số lượng</label>
-                <input id="med-qty-in" type="number" v-model="importForm.qty" required class="w-full px-3 py-2 border rounded-xl text-center" />
+                <label for="med-qty-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Số lượng nhập</label>
+                <input id="med-qty-in" type="number" min="1" v-model="importForm.qty" required class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl text-center font-bold" />
               </div>
               <div>
-                <label for="med-unit-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Đơn vị</label>
-                <select id="med-unit-in" v-model="importForm.unit" class="w-full px-3 py-2 border rounded-xl">
+                <label for="med-unit-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Đơn vị tính</label>
+                <select id="med-unit-in" v-model="importForm.unit" class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl bg-white">
                   <option value="Viên">Viên</option>
                   <option value="Gói">Gói</option>
                   <option value="Chai">Chai</option>
+                  <option value="Tuýp">Tuýp</option>
                 </select>
               </div>
             </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="med-price-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Giá bán / Đơn vị (đ)</label>
+                <input id="med-price-in" type="number" min="500" step="500" v-model="importForm.price" required class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl text-center" />
+              </div>
+              <div>
+                <label for="med-min-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Tồn tối thiểu an toàn</label>
+                <input id="med-min-in" type="number" min="1" v-model="importForm.minStock" required class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl text-center" />
+              </div>
+            </div>
+
             <div>
               <label for="med-exp-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Hạn sử dụng (HSD)</label>
-              <input id="med-exp-in" type="date" v-model="importForm.expiryDate" required class="w-full px-3 py-2 border rounded-xl" />
+              <input id="med-exp-in" type="date" v-model="importForm.expiryDate" required class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl" />
             </div>
-            <div>
-              <label for="med-sup-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Nhà cung cấp dược</label>
-              <select id="med-sup-in" v-model="importForm.supplier" class="w-full px-3 py-2 border rounded-xl">
-                <option v-for="s in suppliers" :key="s.id" :value="s.name">{{ s.name }}</option>
-              </select>
-            </div>
-            <button type="submit" class="w-full py-3 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl shadow mt-2">
-              Xác nhận Nhập Kho
-            </button>
-          </form>
-        </div>
 
-        <!-- Xuất kho -->
-        <div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <h3 class="text-xl font-bold text-gray-850 flex items-center gap-2 border-b pb-3">
-            <span class="text-2xl">📤</span> Phiếu Xuất Cấp Phát Thuốc
-          </h3>
-          <form @submit.prevent="submitExport" class="space-y-4 text-sm">
-            <div>
-              <label for="med-select-ex" class="block text-xs text-gray-450 font-bold uppercase mb-1">Chọn dược phẩm xuất</label>
-              <select id="med-select-ex" v-model="exportForm.name" class="w-full px-3 py-2 border rounded-xl">
-                <option v-for="item in stock" :key="item.name" :value="item.name">
-                  {{ item.name }} (Còn tồn: {{ item.qty }} {{ item.unit }})
-                </option>
-              </select>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="med-cat-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Nhóm phân loại</label>
+                <select id="med-cat-in" v-model="importForm.category" class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl bg-white">
+                  <option value="Giảm đau & Hạ sốt">Giảm đau & Hạ sốt</option>
+                  <option value="Kháng sinh">Kháng sinh</option>
+                  <option value="Tim mạch">Tim mạch</option>
+                  <option value="Dạ dày & Tiêu hóa">Dạ dày & Tiêu hóa</option>
+                  <option value="Hô hấp">Hô hấp</option>
+                  <option value="Vitamin & Bổ dưỡng">Vitamin & Bổ dưỡng</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div>
+                <label for="med-sup-in" class="block text-xs text-gray-450 font-bold uppercase mb-1">Nhà cung cấp dược</label>
+                <select id="med-sup-in" v-model="importForm.supplier" class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl bg-white">
+                  <option v-for="s in suppliers" :key="s.id" :value="s.name">{{ s.name }}</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label for="med-qty-ex" class="block text-xs text-gray-450 font-bold uppercase mb-1">Số lượng xuất cấp</label>
-              <input id="med-qty-ex" type="number" v-model="exportForm.qty" required class="w-full px-3 py-2 border rounded-xl text-center" />
-            </div>
-            <div>
-              <label for="med-reason-ex" class="block text-xs text-gray-450 font-bold uppercase mb-1">Lý do xuất</label>
-              <input id="med-reason-ex" type="text" v-model="exportForm.reason" class="w-full px-3 py-2 border rounded-xl" />
-            </div>
-            <button type="submit" class="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow mt-6">
-              Xác nhận Xuất Dược Phẩm
+
+            <button type="submit" class="w-full py-3 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl shadow mt-2 transition-all">
+              Nhập kho lô thuốc
             </button>
           </form>
         </div>
       </div>
 
-      <!-- ==================== MENU 3: WARNINGS ==================== -->
-      <div v-else-if="activeMenu === 'warnings'" class="space-y-6 animate-fade-in">
+      <!-- ==================== MENU 3: DRUG CLASSIFICATION (PHÂN LOẠI THUỐC) ==================== -->
+      <div v-else-if="activeMenu === 'classification'" class="space-y-6 animate-fade-in">
         <div>
-          <h2 class="text-2xl font-black text-gray-800">Cảnh báo an toàn tồn kho thuốc</h2>
-          <p class="text-sm text-gray-400">Danh sách các loại thuốc dưới định mức tồn kho tối thiểu hoặc cận ngày hết hạn sử dụng.</p>
+          <h2 class="text-2xl font-black text-gray-800">Phân loại & Gán nhóm dược phẩm</h2>
+          <p class="text-sm text-gray-400">Xếp các biệt dược vào nhóm lâm sàng tương ứng (Kháng sinh, Tim mạch, Giảm đau...).</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
+          <!-- Category list columns (Takes 2/3 width) -->
+          <div class="lg:col-span-2 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div 
+                v-for="cat in categoriesWithoutAll" 
+                :key="cat" 
+                class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3"
+              >
+                <h3 class="font-black text-sm text-amber-800 border-b pb-2 flex items-center gap-1.5">
+                  <i class="bi bi-tag-fill text-amber-600"></i>
+                  {{ cat }}
+                  <span class="text-xs text-gray-450 font-normal ml-auto">({{ stock.filter(s => s.category === cat).length }} mặt hàng)</span>
+                </h3>
+                <ul class="space-y-1.5 text-xs text-gray-700">
+                  <li 
+                    v-for="med in stock.filter(s => s.category === cat)" 
+                    :key="med.name"
+                    class="flex justify-between items-center py-1 bg-gray-50 px-2 rounded-lg"
+                  >
+                    <span class="font-semibold text-gray-850">{{ med.name }}</span>
+                    <span class="text-gray-400 font-mono">{{ med.qty }} {{ med.unit }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Adjust category form (Takes 1/3 width) -->
+          <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+            <h3 class="text-base font-bold text-gray-800 border-b pb-2 flex items-center gap-1.5">
+              <i class="bi bi-pencil-square text-amber-600"></i> Cập nhật phân loại
+            </h3>
+            <form @submit.prevent="updateClassification" class="space-y-4 text-xs">
+              <div>
+                <label for="class-med" class="block text-xs font-bold text-gray-400 uppercase mb-1.5">Chọn biệt dược</label>
+                <select 
+                  id="class-med" 
+                  v-model="classMedName" 
+                  class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl bg-white"
+                >
+                  <option value="">-- Chọn thuốc cần đổi nhóm --</option>
+                  <option v-for="item in stock" :key="item.name" :value="item.name">{{ item.name }} ({{ item.category }})</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="class-cat" class="block text-xs font-bold text-gray-400 uppercase mb-1.5">Gán vào nhóm / Phân loại</label>
+                <input 
+                  id="class-cat" 
+                  type="text" 
+                  v-model="classCategory" 
+                  placeholder="Gõ nhóm mới hoặc nhóm sẵn có..." 
+                  list="category-suggestions"
+                  class="w-full px-3 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-200 rounded-xl"
+                />
+                <datalist id="category-suggestions">
+                  <option v-for="cat in categoriesWithoutAll" :key="cat" :value="cat" />
+                </datalist>
+              </div>
+
+              <button 
+                type="submit" 
+                class="w-full py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl transition-all shadow"
+              >
+                Xác nhận đổi nhóm
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== MENU 4: EXPIRED MEDICINE REPORT (BÁO CÁO THUỐC HẾT HẠN) ==================== -->
+      <div v-else-if="activeMenu === 'expiry'" class="space-y-6 animate-fade-in">
+        <div>
+          <h2 class="text-2xl font-black text-rose-800">Báo cáo thuốc hết hạn & Cận hạn sử dụng</h2>
+          <p class="text-sm text-gray-400">Danh mục thuốc đã quá hạn sử dụng cần hủy bỏ và thuốc cận hạn dưới 6 tháng cần ưu tiên phân phối.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <!-- Low Stock Warnings -->
-          <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-            <h3 class="text-lg font-bold text-rose-600 border-b pb-2 flex items-center gap-1.5">
-              <i class="bi bi-exclamation-octagon-fill"></i> Tồn kho báo động đỏ (Hết hàng/Sắp hết)
+          
+          <!-- Hết hạn sử dụng -->
+          <div class="bg-white p-6 rounded-3xl border border-red-100 shadow-sm space-y-4">
+            <h3 class="text-base font-bold text-red-700 border-b pb-2 flex items-center justify-between">
+              <span>🚨 ĐÃ HẾT HẠN SỬ DỤNG</span>
+              <span class="text-xs font-black px-2 py-0.5 bg-red-100 rounded text-red-800">Cần xử lý hủy</span>
             </h3>
-            <div class="divide-y">
-              <div v-for="item in stock.filter(i => i.qty <= i.minStock)" :key="item.name" class="py-3 flex justify-between items-center text-sm">
+            
+            <div class="divide-y divide-gray-50">
+              <div v-for="med in expiredList" :key="med.name" class="py-3 flex justify-between items-center text-xs">
                 <div>
-                  <h4 class="font-bold text-gray-850">{{ item.name }}</h4>
-                  <p class="text-xs text-gray-400">Định mức an toàn: {{ item.minStock }} - Đơn vị: {{ item.unit }}</p>
+                  <h4 class="font-bold text-gray-850">{{ med.name }}</h4>
+                  <p class="text-[10px] text-gray-450">Nhóm: {{ med.category }}</p>
                 </div>
                 <div class="text-right">
-                  <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded mr-3">Còn tồn: {{ item.qty }}</span>
-                  <button @click="quickRestock(item.name)" class="text-xs text-amber-700 font-bold hover:underline">Bổ sung nhanh</button>
+                  <span class="font-mono font-bold text-red-655 block">HSD: {{ med.expiryDate }}</span>
+                  <span class="text-[10px] text-red-500 font-bold">Số lượng tồn kho: {{ med.qty }} {{ med.unit }}</span>
                 </div>
+              </div>
+
+              <div v-if="expiredList.length === 0" class="py-8 text-center text-gray-400 text-xs italic">
+                Tuyệt vời! Hiện tại không có loại thuốc nào bị hết hạn sử dụng.
               </div>
             </div>
           </div>
 
-          <!-- Expiry Warnings -->
-          <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-            <h3 class="text-lg font-bold text-amber-600 border-b pb-2 flex items-center gap-1.5">
-              <i class="bi bi-clock-history"></i> Cận hạn sử dụng (Dưới 6 tháng)
+          <!-- Cận hạn sử dụng -->
+          <div class="bg-white p-6 rounded-3xl border border-amber-100 shadow-sm space-y-4">
+            <h3 class="text-base font-bold text-amber-700 border-b pb-2 flex items-center justify-between">
+              <span>⏳ CẬN HẠN SỬ DỤNG (DƯỚI 6 THÁNG)</span>
+              <span class="text-xs font-black px-2 py-0.5 bg-amber-100 rounded text-amber-800">Ưu tiên xuất kê</span>
             </h3>
-            <div class="divide-y">
-              <div v-for="item in stock.filter(i => new Date(i.expiryDate) <= new Date('2026-10-01'))" :key="item.name" class="py-3 flex justify-between items-center text-sm">
+            
+            <div class="divide-y divide-gray-50">
+              <div v-for="med in nearExpiryList" :key="med.name" class="py-3 flex justify-between items-center text-xs">
                 <div>
-                  <h4 class="font-bold text-gray-850">{{ item.name }}</h4>
-                  <p class="text-xs text-gray-400">Hạn sử dụng: <span class="font-mono text-red-500 font-semibold">{{ item.expiryDate }}</span></p>
+                  <h4 class="font-bold text-gray-850">{{ med.name }}</h4>
+                  <p class="text-[10px] text-gray-450">Nhóm: {{ med.category }}</p>
                 </div>
-                <span class="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">Cận HSD</span>
+                <div class="text-right">
+                  <span class="font-mono font-bold text-amber-800 block">HSD: {{ med.expiryDate }}</span>
+                  <span class="text-[10px] text-gray-500">Số lượng tồn kho: {{ med.qty }} {{ med.unit }}</span>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- ==================== MENU 4: SUPPLIERS ==================== -->
-      <div v-else-if="activeMenu === 'suppliers'" class="space-y-6 animate-fade-in">
-        <div class="flex justify-between items-center">
-          <div>
-            <h2 class="text-2xl font-black text-gray-800">Quản lý nhà cung cấp dược</h2>
-            <p class="text-sm text-gray-400">Danh mục đối tác cung ứng dược phẩm và vật tư y khoa cho bệnh viện.</p>
-          </div>
-          <button 
-            @click="showAddSupplierModal = true"
-            class="py-2.5 px-4 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1"
-          >
-            <i class="bi bi-person-plus-fill"></i> Thêm nhà cung cấp
-          </button>
-        </div>
-
-        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-100 font-bold text-gray-500">
-                  <th class="py-3.5 px-6">Tên nhà cung cấp</th>
-                  <th class="py-3.5 px-6">Người liên hệ</th>
-                  <th class="py-3.5 px-6">Số điện thoại</th>
-                  <th class="py-3.5 px-6">Địa chỉ trụ sở</th>
-                  <th class="py-3.5 px-6 text-center">Xóa</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100 text-gray-700">
-                <tr v-for="s in suppliers" :key="s.id" class="hover:bg-gray-50/20">
-                  <td class="py-4 px-6 font-bold text-gray-850">{{ s.name }}</td>
-                  <td class="py-4 px-6 text-gray-600 font-medium">{{ s.contact }}</td>
-                  <td class="py-4 px-6 font-mono text-xs">{{ s.phone }}</td>
-                  <td class="py-4 px-6 text-gray-500 font-semibold">{{ s.address }}</td>
-                  <td class="py-4 px-6 text-center">
-                    <button @click="removeSupplier(s.id)" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ==================== MENU 5: INVENTORY REPORTS ==================== -->
-      <div v-else-if="activeMenu === 'reports'" class="space-y-6 animate-fade-in">
-        <div>
-          <h2 class="text-2xl font-black text-gray-800">Báo cáo xuất - nhập - tồn kho thuốc</h2>
-          <p class="text-sm text-gray-400">Xem thống kê và giá trị tổng kho dược phẩm của bệnh viện.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-            <h3 class="text-lg font-bold text-gray-850 border-b pb-2">Ước tính giá trị tồn kho hiện tại</h3>
-            <div class="space-y-4 pt-2 text-sm text-gray-700">
-              <div class="flex justify-between border-b pb-2">
-                <span>Số lượng mặt hàng biệt dược:</span>
-                <span class="font-bold text-gray-800">{{ stats.totalItems }} loại</span>
-              </div>
-              <div class="flex justify-between border-b pb-2">
-                <span>Tổng đơn vị tồn trữ:</span>
-                <span class="font-bold text-gray-800">{{ stats.totalQty }} đơn vị</span>
-              </div>
-              <div class="flex justify-between pb-2">
-                <span class="font-bold text-amber-800">Tổng giá trị quy đổi kho dược:</span>
-                <span class="font-black text-lg text-amber-700">~{{ (stats.totalQty * 18000).toLocaleString('vi-VN') }}đ</span>
+              <div v-if="nearExpiryList.length === 0" class="py-8 text-center text-gray-400 text-xs italic">
+                Không có thuốc cận hạn sử dụng nào dưới 6 tháng.
               </div>
             </div>
           </div>
 
-          <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-            <h3 class="text-lg font-bold text-gray-850 mb-4">Nhật ký nhập xuất tồn tuần này</h3>
-            <div class="space-y-3 text-xs font-semibold">
-              <div class="p-3 bg-emerald-50 text-emerald-800 rounded-xl flex justify-between items-center">
-                <span>📥 Đã nhập 500 viên Amoxicillin từ Traphaco</span>
-                <span>Hôm qua</span>
-              </div>
-              <div class="p-3 bg-amber-50 text-amber-800 rounded-xl flex justify-between items-center">
-                <span>📤 Xuất 50 viên Nexium cho Quầy dược sĩ</span>
-                <span>Hôm nay</span>
-              </div>
-              <div class="p-3 bg-emerald-50 text-emerald-800 rounded-xl flex justify-between items-center">
-                <span>📥 Đã nhập 200 hộp Phosphalugel từ Pharmedic</span>
-                <span>15/06/2026</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
     </main>
-
-    <!-- ==================== ADD SUPPLIER MODAL ==================== -->
-    <div v-if="showAddSupplierModal" class="fixed inset-0 bg-black/55 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 md:p-8 animate-fade-in-up space-y-6">
-        <div class="text-center">
-          <h3 class="text-2xl font-black text-gray-800">Thêm Nhà Cung Cấp</h3>
-          <p class="text-sm text-gray-500 mt-1">Điền chi tiết thông tin nhà phân phối dược</p>
-        </div>
-
-        <form @submit.prevent="addSupplier" class="space-y-4 text-sm">
-          <div>
-            <label for="sup-name" class="block text-sm font-semibold text-gray-700 mb-1.5">Tên doanh nghiệp cung cấp</label>
-            <input id="sup-name" v-model="newSupplierForm.name" type="text" required placeholder="Tên công ty dược..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none" />
-          </div>
-          <div>
-            <label for="sup-contact" class="block text-sm font-semibold text-gray-700 mb-1.5">Đại diện liên hệ</label>
-            <input id="sup-contact" v-model="newSupplierForm.contact" type="text" placeholder="Tên người đại diện..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none" />
-          </div>
-          <div>
-            <label for="sup-phone" class="block text-sm font-semibold text-gray-700 mb-1.5">Số điện thoại liên lạc</label>
-            <input id="sup-phone" v-model="newSupplierForm.phone" type="tel" placeholder="Số điện thoại bàn/di động..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none" />
-          </div>
-          <div>
-            <label for="sup-addr" class="block text-sm font-semibold text-gray-700 mb-1.5">Địa chỉ văn phòng</label>
-            <input id="sup-addr" v-model="newSupplierForm.address" type="text" placeholder="Số nhà, tên đường, tỉnh thành..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none" />
-          </div>
-
-          <div class="flex gap-3 pt-3">
-            <button type="button" @click="showAddSupplierModal = false" class="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-650 hover:bg-gray-50 text-sm">
-              Hủy
-            </button>
-            <button type="submit" class="flex-1 py-3 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl text-sm shadow">
-              Thêm nhà cung cấp
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
   </div>
 </template>

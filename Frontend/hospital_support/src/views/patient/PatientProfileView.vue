@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
 const isLoggedIn = ref(false)
 const currentUser = ref(null)
@@ -9,7 +10,8 @@ const profileForm = ref({
   gender: 'Nam',
   phone: '',
   email: '',
-  address: ''
+  address: '',
+  ngaySinh: ''
 })
 
 const passwordForm = ref({
@@ -34,36 +36,52 @@ onMounted(() => {
     profileForm.value.phone = currentUser.value.phone || ''
     profileForm.value.email = currentUser.value.email || ''
     profileForm.value.address = currentUser.value.address || ''
+    profileForm.value.ngaySinh = currentUser.value.ngaySinh || ''
   }
 })
 
-function handleUpdateProfile() {
+async function handleUpdateProfile() {
   if (!profileForm.value.fullName || !profileForm.value.phone) {
     alert('Họ tên và Số điện thoại là bắt buộc!')
     return
   }
   
-  // Merge and update in localStorage
-  const updatedUser = {
-    ...currentUser.value,
-    ...profileForm.value
-  }
-  
-  currentUser.value = updatedUser
-  localStorage.setItem('currentUser', JSON.stringify(updatedUser))
-  
-  // Also update in registeredUsers database to keep it synced
-  let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]')
-  let index = registeredUsers.findIndex(u => u.phone === updatedUser.phone || u.email === updatedUser.email)
-  if (index !== -1) {
-    registeredUsers[index] = {
-      ...registeredUsers[index],
-      ...profileForm.value
+  try {
+    const res = await axios.put(`http://localhost:8080/api/auth/update-profile/${currentUser.value.id}`, {
+      fullName: profileForm.value.fullName,
+      gender: profileForm.value.gender,
+      phone: profileForm.value.phone,
+      email: profileForm.value.email || null,
+      address: profileForm.value.address || null,
+      ngaySinh: profileForm.value.ngaySinh || null,
+      password: 'dummy'
+    })
+    
+    const user = res.data
+    const roleMap = {
+      'BENH_NHAN': 'patient',
+      'DIEU_DUONG': 'nurse',
+      'BAC_SI': 'doctor',
+      'DUOC_SI': 'pharmacist',
+      'THU_KHO': 'warehouse'
     }
-    localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers))
+    const updatedUser = {
+      id: user.id,
+      fullName: user.fullName,
+      gender: user.gender,
+      phone: user.phone,
+      email: user.email,
+      address: user.address,
+      ngaySinh: user.ngaySinh,
+      role: roleMap[user.role] || 'patient'
+    }
+    
+    currentUser.value = updatedUser
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser))
+    alert('Cập nhật thông tin cá nhân thành công!')
+  } catch (err) {
+    alert(err.response?.data?.message || 'Cập nhật thông tin cá nhân thất bại!')
   }
-  
-  alert('Cập nhật thông tin cá nhân thành công!')
 }
 
 function handleChangePassword() {
@@ -189,14 +207,26 @@ function handleLogout() {
               </div>
             </div>
 
-            <div>
-              <label for="profile-email" class="block text-lg font-semibold text-gray-700 mb-2">Địa chỉ Email</label>
-              <input
-                id="profile-email"
-                v-model="profileForm.email"
-                type="email"
-                class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all bg-gray-50/50"
-              />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="profile-email" class="block text-lg font-semibold text-gray-700 mb-2">Địa chỉ Email</label>
+                <input
+                  id="profile-email"
+                  v-model="profileForm.email"
+                  type="email"
+                  class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all bg-gray-50/50"
+                />
+              </div>
+
+              <div>
+                <label for="profile-dob" class="block text-lg font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                <input
+                  id="profile-dob"
+                  v-model="profileForm.ngaySinh"
+                  type="date"
+                  class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all bg-gray-50/50"
+                />
+              </div>
             </div>
 
             <div>

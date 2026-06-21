@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import CKEditor from '../../components/CKEditor.vue'
 
-const activeMenu = ref('analytics') // analytics, staff, clinics, accounts, settings, news
+const activeMenu = ref('analytics') // analytics, staff, clinics, accounts, settings, news, doctor-bio
 const staff = ref([])
 const clinics = ref([])
 const accounts = ref([])
@@ -12,6 +12,15 @@ const showAddStaffModal = ref(false)
 const showAddClinicModal = ref(false)
 const showAddNewsModal = ref(false)
 const showScheduleModal = ref(false)
+const showEditBioModal = ref(false)
+
+// Bio Edit Form
+const selectedDoctorForBio = ref(null)
+const bioForm = ref({
+  id: null,
+  name: '',
+  bio: ''
+})
 
 // Schedule Assignment Form
 const selectedStaffMember = ref(null)
@@ -35,19 +44,8 @@ const newsForm = ref({
 })
 
 // Period filter tabs for reports
-const activePeriod = ref('month') // day, week, month, year
+const activePeriod = ref('month') // week, month, quarter, year
 const analyticsData = {
-  day: {
-    revenue: 4500000,
-    patients: 42,
-    efficiency: [
-      { name: 'Khoa Tim mạch', patients: 12, rate: 75, color: 'bg-indigo-600' },
-      { name: 'Khoa Nội tổng quát', patients: 18, rate: 85, color: 'bg-emerald-600' },
-      { name: 'Khoa Ngoại khoa', patients: 4, rate: 50, color: 'bg-amber-600' },
-      { name: 'Khoa Sản phụ khoa', patients: 3, rate: 60, color: 'bg-rose-600' },
-      { name: 'Khoa Mắt', patients: 5, rate: 65, color: 'bg-purple-600' }
-    ]
-  },
   week: {
     revenue: 32400000,
     patients: 310,
@@ -68,6 +66,17 @@ const analyticsData = {
       { name: 'Khoa Ngoại khoa', patients: 210, rate: 65, color: 'bg-amber-600' },
       { name: 'Khoa Sản phụ khoa', patients: 180, rate: 78, color: 'bg-rose-600' },
       { name: 'Khoa Mắt', patients: 200, rate: 80, color: 'bg-purple-600' }
+    ]
+  },
+  quarter: {
+    revenue: 462600000,
+    patients: 4260,
+    efficiency: [
+      { name: 'Khoa Tim mạch', patients: 1050, rate: 87, color: 'bg-indigo-600' },
+      { name: 'Khoa Nội tổng quát', patients: 1440, rate: 93, color: 'bg-emerald-600' },
+      { name: 'Khoa Ngoại khoa', patients: 630, rate: 68, color: 'bg-amber-600' },
+      { name: 'Khoa Sản phụ khoa', patients: 540, rate: 79, color: 'bg-rose-600' },
+      { name: 'Khoa Mắt', patients: 600, rate: 82, color: 'bg-purple-600' }
     ]
   },
   year: {
@@ -519,6 +528,31 @@ function deleteNews(id) {
     alert('Đã xóa bài viết thành công.')
   }
 }
+
+function openEditBioModal(doctor) {
+  selectedDoctorForBio.value = doctor
+  bioForm.value = {
+    id: doctor.id,
+    name: doctor.name,
+    bio: doctor.bio || ''
+  }
+  showEditBioModal.value = true
+}
+
+function saveDoctorBio() {
+  const idx = staff.value.findIndex(s => s.id === bioForm.value.id)
+  if (idx !== -1) {
+    staff.value[idx].bio = bioForm.value.bio
+    localStorage.setItem('hospitalStaff', JSON.stringify(staff.value))
+    alert(`Đã cập nhật tiểu sử cho bác sĩ ${bioForm.value.name}!`)
+  }
+  showEditBioModal.value = false
+  selectedDoctorForBio.value = null
+}
+
+const doctorsList = computed(() => {
+  return staff.value.filter(s => s.role === 'Bác sĩ chuyên khoa')
+})
 </script>
 <template>
   <div class="min-h-[calc(100vh-112px)] bg-gray-50 flex">
@@ -546,7 +580,7 @@ function deleteNews(id) {
             :class="activeMenu === 'analytics' ? 'bg-purple-50 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
             <i class="bi bi-pie-chart text-lg"></i>
-            Tổng quan báo cáo
+            Báo cáo thống kê
           </button>
           
           <button 
@@ -564,7 +598,7 @@ function deleteNews(id) {
             :class="activeMenu === 'clinics' ? 'bg-purple-50 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
             <i class="bi bi-hospital text-lg"></i>
-            Chuyên khoa & Dịch vụ
+            Quản lý chuyên khoa
           </button>
 
           <button 
@@ -573,7 +607,7 @@ function deleteNews(id) {
             :class="activeMenu === 'accounts' ? 'bg-purple-50 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
             <i class="bi bi-shield-lock text-lg"></i>
-            Quản lý tài khoản
+            Danh sách tài khoản
           </button>
 
           <button 
@@ -591,7 +625,16 @@ function deleteNews(id) {
             :class="activeMenu === 'settings' ? 'bg-purple-50 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
           >
             <i class="bi bi-gear text-lg"></i>
-            Cài đặt hệ thống
+            Cấu hình hệ thống
+          </button>
+
+          <button 
+            @click="activeMenu = 'doctor-bio'"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all"
+            :class="activeMenu === 'doctor-bio' ? 'bg-purple-50 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'"
+          >
+            <i class="bi bi-journal-text text-lg"></i>
+            Quản lý bio bác sĩ
           </button>
         </nav>
       </div>
@@ -613,9 +656,9 @@ function deleteNews(id) {
           </div>
           <!-- Period Filter Tabs -->
           <div class="flex gap-1 bg-gray-100 p-1 rounded-2xl">
-            <button @click="activePeriod = 'day'" class="px-4 py-2 rounded-xl text-xs font-bold transition-all" :class="activePeriod === 'day' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'">Hôm nay</button>
             <button @click="activePeriod = 'week'" class="px-4 py-2 rounded-xl text-xs font-bold transition-all" :class="activePeriod === 'week' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'">Tuần này</button>
             <button @click="activePeriod = 'month'" class="px-4 py-2 rounded-xl text-xs font-bold transition-all" :class="activePeriod === 'month' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'">Tháng này</button>
+            <button @click="activePeriod = 'quarter'" class="px-4 py-2 rounded-xl text-xs font-bold transition-all" :class="activePeriod === 'quarter' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'">Quý này</button>
             <button @click="activePeriod = 'year'" class="px-4 py-2 rounded-xl text-xs font-bold transition-all" :class="activePeriod === 'year' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'">Năm nay</button>
           </div>
         </div>
@@ -1018,6 +1061,46 @@ function deleteNews(id) {
         </div>
       </div>
 
+      <!-- ==================== MENU 7: DOCTOR BIO MANAGEMENT ==================== -->
+      <div v-else-if="activeMenu === 'doctor-bio'" class="space-y-6 animate-fade-in">
+        <div>
+          <h2 class="text-2xl font-black text-gray-800">Quản lý tiểu sử (Bio) Bác sĩ</h2>
+          <p class="text-sm text-gray-400">Xem và cập nhật thông tin giới thiệu, học hàm học vị, kinh nghiệm của đội ngũ bác sĩ chuyên khoa.</p>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-100 font-bold text-gray-500">
+                  <th class="py-3.5 px-6">Họ và tên</th>
+                  <th class="py-3.5 px-6">Chuyên khoa</th>
+                  <th class="py-3.5 px-6">Tiểu sử / Bio bác sĩ</th>
+                  <th class="py-3.5 px-6 text-center">Hành động</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 text-gray-700">
+                <tr v-for="doc in doctorsList" :key="doc.id" class="hover:bg-gray-50/20">
+                  <td class="py-4 px-6 font-bold text-gray-850">{{ doc.name }}</td>
+                  <td class="py-4 px-6 text-purple-750 font-semibold">{{ doc.specialty }}</td>
+                  <td class="py-4 px-6 text-gray-600 max-w-lg">
+                    <p class="line-clamp-3 text-xs leading-relaxed">{{ doc.bio || 'Chưa cập nhật tiểu sử.' }}</p>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <button 
+                      @click="openEditBioModal(doc)" 
+                      class="px-3 py-1.5 bg-purple-50 text-purple-750 font-bold rounded-xl text-xs hover:bg-purple-100 transition-colors flex items-center gap-1 mx-auto"
+                    >
+                      <i class="bi bi-pencil-square"></i> Cập nhật Bio
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </main>
 
     <!-- ==================== ADD STAFF MODAL ==================== -->
@@ -1347,6 +1430,46 @@ function deleteNews(id) {
               class="flex-1 py-3 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-sm shadow"
             >
               Lưu bài viết công bố
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ==================== EDIT BIO MODAL ==================== -->
+    <div v-if="showEditBioModal" class="fixed inset-0 bg-black/55 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 md:p-8 animate-fade-in-up space-y-6">
+        <div class="text-center border-b pb-4">
+          <h3 class="text-2xl font-black text-gray-800">Cập nhật Bio Bác sĩ</h3>
+          <p class="text-sm text-gray-500 mt-1">Cập nhật học vị, kinh nghiệm cho bác sĩ <strong class="text-purple-700">{{ bioForm.name }}</strong></p>
+        </div>
+
+        <form @submit.prevent="saveDoctorBio" class="space-y-4 text-sm">
+          <div>
+            <label for="edit-doctor-bio" class="block text-sm font-semibold text-gray-700 mb-1.5">Nội dung tiểu sử / Bio</label>
+            <textarea
+              id="edit-doctor-bio"
+              v-model="bioForm.bio"
+              rows="8"
+              required
+              placeholder="Nhập chi tiết quá trình học tập, công tác, chuyên sâu lâm sàng..."
+              class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none text-gray-700 leading-relaxed text-sm"
+            ></textarea>
+          </div>
+
+          <div class="flex gap-3 pt-3">
+            <button 
+              type="button"
+              @click="showEditBioModal = false; selectedDoctorForBio = null"
+              class="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-650 hover:bg-gray-50 text-sm"
+            >
+              Hủy
+            </button>
+            <button 
+              type="submit"
+              class="flex-1 py-3 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-sm shadow"
+            >
+              Lưu thay đổi
             </button>
           </div>
         </form>

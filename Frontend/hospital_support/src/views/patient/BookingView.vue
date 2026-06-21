@@ -15,6 +15,7 @@ const form = ref({
   phone: '',
   email: '',
   address: '',
+  ngaySinh: '',
   department: '',
   doctor: '',
   date: '',
@@ -69,6 +70,7 @@ onMounted(() => {
     form.value.phone = currentUser.value.phone || ''
     form.value.email = currentUser.value.email || ''
     form.value.address = currentUser.value.address || ''
+    form.value.ngaySinh = currentUser.value.ngaySinh || ''
   }
   
   // Load bookings list
@@ -316,9 +318,10 @@ function resetForm() {
               </div>
             </div>
 
-            <!-- Address -->
-            <div>
-              <label for="booking-address" class="block text-lg font-semibold text-gray-700 mb-2">Địa chỉ cư trú</label>
+            <!-- Address & Date of Birth -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="booking-address" class="block text-lg font-semibold text-gray-700 mb-2">Địa chỉ cư trú</label>
               <input
                 id="booking-address"
                 v-model="form.address"
@@ -326,6 +329,17 @@ function resetForm() {
                 placeholder="Nhập địa chỉ nhà của bạn"
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 bg-gray-50/50"
               />
+              </div>
+
+              <div>
+                <label for="booking-dob" class="block text-lg font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                <input
+                  id="booking-dob"
+                  v-model="form.ngaySinh"
+                  type="date"
+                  class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all bg-gray-50/50 text-gray-700"
+                />
+              </div>
             </div>
 
             <!-- Booking Type & Payment Method Selection -->
