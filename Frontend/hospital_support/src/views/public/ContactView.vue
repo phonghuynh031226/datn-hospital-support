@@ -18,7 +18,7 @@ function submitContact() {
   }
   
   isSubmitted.value = true
-  alert('Gửi lời nhắn thành công! Đội ngũ tư vấn sẽ liên hệ lại với bác sớm nhất qua Số điện thoại.')
+  alert('Gửi lời nhắn thành công! Đội ngũ tư vấn sẽ liên hệ lại với bạn sớm nhất qua Số điện thoại.')
   form.value = {
     fullName: '',
     phone: '',
@@ -123,14 +123,14 @@ function submitContact() {
           <form @submit.prevent="submitContact" class="space-y-5">
             <div>
               <label for="contact-name" class="block text-lg font-semibold text-gray-700 mb-2">
-                Họ và tên của bác <span class="text-red-500">*</span>
+                Họ và tên của bạn <span class="text-red-500">*</span>
               </label>
               <input
                 id="contact-name"
                 v-model="form.fullName"
                 type="text"
                 required
-                placeholder="Nhập đầy đủ họ và tên bác..."
+                placeholder="Nhập đầy đủ họ và tên bạn..."
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 bg-gray-50/50"
               />
             </div>
@@ -172,7 +172,7 @@ function submitContact() {
                 id="contact-title"
                 v-model="form.title"
                 type="text"
-                placeholder="Nhập chủ đề bác quan tâm"
+                placeholder="Nhập chủ đề bạn quan tâm"
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 bg-gray-50/50"
               />
             </div>
@@ -186,7 +186,7 @@ function submitContact() {
                 v-model="form.message"
                 rows="5"
                 required
-                placeholder="Nhập chi tiết câu hỏi hoặc thắc mắc của bác cần giải đáp..."
+                placeholder="Nhập chi tiết câu hỏi hoặc thắc mắc của bạn cần giải đáp..."
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 resize-none bg-gray-50/50"
               ></textarea>
             </div>
@@ -198,7 +198,7 @@ function submitContact() {
               <i class="bi bi-send-fill mr-1.5"></i> Gửi Tin Nhắn Cho Chúng Tôi
             </button>
             
-            <p class="text-center text-xs text-gray-400"><i class="bi bi-shield-check"></i> Thông tin của bác được bảo mật và phản hồi trong 24 giờ làm việc.</p>
+            <p class="text-center text-xs text-gray-400"><i class="bi bi-shield-check"></i> Thông tin của bạn được bảo mật và phản hồi trong 24 giờ làm việc.</p>
           </form>
         </div>
 

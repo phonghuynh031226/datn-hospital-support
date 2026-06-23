@@ -15,11 +15,15 @@ const form = ref({
   phone: '',
   email: '',
   address: '',
+  ngaySinh: '',
   department: '',
   doctor: '',
   date: '',
   timeSlot: '',
-  symptoms: ''
+  symptoms: '',
+  bookingType: 'Khám mới',
+  paymentMethod: 'Tại quầy',
+  paymentStatus: 'Chưa thanh toán'
 })
 
 // AI Suggestion State
@@ -28,6 +32,7 @@ const aiConfidence = ref(0)
 
 // UI state
 const showConfirmModal = ref(false)
+const showPaymentQRModal = ref(false) // New QR mockup modal
 const activeBookingResult = ref(null) // Holds successfully created booking
 const bookingHistory = ref([])
 
@@ -65,6 +70,7 @@ onMounted(() => {
     form.value.phone = currentUser.value.phone || ''
     form.value.email = currentUser.value.email || ''
     form.value.address = currentUser.value.address || ''
+    form.value.ngaySinh = currentUser.value.ngaySinh || ''
   }
   
   // Load bookings list
@@ -134,6 +140,11 @@ watch(() => form.value.symptoms, (newVal) => {
 
 // Submit button -> triggers confirmation modal
 function triggerSubmit() {
+  if (!isLoggedIn.value) {
+    alert('Vui lòng đăng nhập tài khoản trước khi đặt lịch khám!')
+    router.push('/dang-nhap')
+    return
+  }
   const f = form.value
   if (!f.fullName || !f.phone || !f.department || !f.date || !f.timeSlot) {
     alert('Vui lòng nhập đầy đủ các trường thông tin bắt buộc (*)!')
@@ -142,11 +153,13 @@ function triggerSubmit() {
   showConfirmModal.value = true
 }
 
-// Confirm booking -> creates booking result
+// Temp storage for booking during payment
+const tempBookingData = ref(null)
+
+// Confirm booking -> triggers QR payment if online, or completes immediately if counter payment
 function confirmBooking() {
   showConfirmModal.value = false
   
-  // Generate mock booking results
   const randomCode = 'BV-' + Math.floor(100000 + Math.random() * 900000)
   const randomSTT = Math.floor(1 + Math.random() * 30)
   
@@ -164,21 +177,44 @@ function confirmBooking() {
     date: form.value.date,
     timeSlot: form.value.timeSlot,
     symptoms: form.value.symptoms || 'Khám tổng quát định kỳ',
-    status: 'Chờ khám'
+    bookingType: form.value.bookingType,
+    paymentMethod: form.value.paymentMethod,
+    paymentStatus: form.value.paymentMethod === 'Online' ? 'Chưa thanh toán' : 'Chưa thanh toán',
+    status: 'Đặt lịch'
   }
   
-  // Save to history list
-  bookingHistory.value.unshift(newBooking)
-  localStorage.setItem('patientBookings', JSON.stringify(bookingHistory.value))
+  if (form.value.paymentMethod === 'Online') {
+    tempBookingData.value = newBooking
+    showPaymentQRModal.value = true
+  } else {
+    // Save to history list directly
+    bookingHistory.value.unshift(newBooking)
+    localStorage.setItem('patientBookings', JSON.stringify(bookingHistory.value))
+    activeBookingResult.value = newBooking
+    alert('Đặt lịch thành công! Vui lòng thanh toán viện phí tại quầy tiếp đón khi đến khám.')
+  }
+}
+
+function completeOnlinePayment() {
+  if (!tempBookingData.value) return
   
-  // Set result card
-  activeBookingResult.value = newBooking
-  alert('Đặt lịch khám bệnh thành công! Phiếu đặt lịch chi tiết đã được tạo.')
+  const completedBooking = {
+    ...tempBookingData.value,
+    paymentStatus: 'Đã thanh toán'
+  }
+  
+  bookingHistory.value.unshift(completedBooking)
+  localStorage.setItem('patientBookings', JSON.stringify(bookingHistory.value))
+  activeBookingResult.value = completedBooking
+  
+  showPaymentQRModal.value = false
+  tempBookingData.value = null
+  alert('Xác nhận thanh toán Online thành công! Số thứ tự của bạn đã được kích hoạt.')
 }
 
 // Cancel registration in history
 function cancelBooking(id) {
-  const confirmCancel = confirm('Bác có chắc chắn muốn hủy lịch hẹn khám này không?')
+  const confirmCancel = confirm('Bạn có chắc chắn muốn hủy lịch hẹn khám này không?')
   if (!confirmCancel) return
   
   bookingHistory.value = bookingHistory.value.filter(b => b.id !== id)
@@ -209,7 +245,7 @@ function resetForm() {
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h1 class="text-4xl md:text-5xl font-bold mb-4">Đăng Ký Đặt Lịch Khám</h1>
         <p class="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-          Điền các thông tin triệu chứng để hệ thống tự động gợi ý khoa và xếp chỗ khám ưu tiên cho bác.
+          Điền các thông tin triệu chứng để hệ thống tự động gợi ý khoa và xếp chỗ khám ưu tiên cho bạn.
         </p>
       </div>
     </div>
@@ -224,6 +260,13 @@ function resetForm() {
             <span v-if="isLoggedIn" class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1 rounded-full">
               Đã tự điền hồ sơ
             </span>
+          </div>
+
+          <div v-if="!isLoggedIn" class="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl flex items-center gap-3 text-base">
+            <i class="bi bi-exclamation-triangle-fill text-amber-600 text-xl"></i>
+            <div>
+              Bạn chưa đăng nhập. Vui lòng <RouterLink to="/dang-nhap" class="font-bold underline text-primary-700">Đăng nhập</RouterLink> để có thể tiến hành đặt lịch khám.
+            </div>
           </div>
 
           <form @submit.prevent="triggerSubmit" class="space-y-5">
@@ -275,16 +318,68 @@ function resetForm() {
               </div>
             </div>
 
-            <!-- Address -->
-            <div>
-              <label for="booking-address" class="block text-lg font-semibold text-gray-700 mb-2">Địa chỉ cư trú</label>
+            <!-- Address & Date of Birth -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="booking-address" class="block text-lg font-semibold text-gray-700 mb-2">Địa chỉ cư trú</label>
               <input
                 id="booking-address"
                 v-model="form.address"
                 type="text"
-                placeholder="Nhập địa chỉ nhà của bác"
+                placeholder="Nhập địa chỉ nhà của bạn"
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 bg-gray-50/50"
               />
+              </div>
+
+              <div>
+                <label for="booking-dob" class="block text-lg font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                <input
+                  id="booking-dob"
+                  v-model="form.ngaySinh"
+                  type="date"
+                  class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all bg-gray-50/50 text-gray-700"
+                />
+              </div>
+            </div>
+
+            <!-- Booking Type & Payment Method Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span class="block text-lg font-semibold text-gray-700 mb-2">Loại hình khám bệnh</span>
+                <div class="flex gap-2.5">
+                  <button
+                    v-for="type in (isLoggedIn ? ['Khám mới', 'Tái khám'] : ['Khám mới'])"
+                    :key="type"
+                    type="button"
+                    @click="form.bookingType = type"
+                    class="flex-1 py-3 border rounded-2xl text-base font-semibold transition-all"
+                    :class="form.bookingType === type 
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-bold shadow-sm' 
+                      : 'border-gray-200 text-gray-500 hover:text-gray-700'"
+                  >
+                    {{ type }}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <span class="block text-lg font-semibold text-gray-700 mb-2">Hình thức thanh toán</span>
+                <div class="flex gap-2.5">
+                  <button
+                    v-for="method in ['Tại quầy', 'Online']"
+                    :key="method"
+                    type="button"
+                    @click="form.paymentMethod = method"
+                    class="flex-1 py-3 border rounded-2xl text-base font-semibold transition-all flex items-center justify-center gap-1.5"
+                    :class="form.paymentMethod === method 
+                      ? 'bg-primary-50 border-primary-500 text-primary-700 font-bold shadow-sm' 
+                      : 'border-gray-200 text-gray-500 hover:text-gray-700'"
+                  >
+                    <i :class="method === 'Online' ? 'bi bi-qr-code-scan' : 'bi bi-cash'"></i>
+                    {{ method }}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Symptoms Input (AI auto department triggers here) -->
@@ -296,7 +391,7 @@ function resetForm() {
                 id="booking-symptoms"
                 v-model="form.symptoms"
                 rows="3"
-                placeholder="Ví dụ: Bác cảm thấy bị đau thắt ngực, mệt mỏi, khó thở khi leo cầu thang..."
+                placeholder="Ví dụ: Bạn cảm thấy bị đau thắt ngực, mệt mỏi, khó thở khi leo cầu thang..."
                 class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all placeholder:text-gray-400 resize-none bg-gray-50/50"
               ></textarea>
 
@@ -308,7 +403,7 @@ function resetForm() {
                   </div>
                   <div>
                     <span class="font-bold text-sm bg-primary-700 text-white px-2 py-0.5 rounded-full mr-2">Trí tuệ AI gợi ý</span>
-                    Bác nên khám khoa: <strong class="text-lg underline">{{ aiSuggestedDept }}</strong>
+                    Bạn nên khám khoa: <strong class="text-lg underline">{{ aiSuggestedDept }}</strong>
                   </div>
                 </div>
                 <span class="text-xs text-gray-400 font-bold">Độ chính xác: {{ aiConfidence }}%</span>
@@ -410,14 +505,6 @@ function resetForm() {
                 <span class="font-bold text-lg">{{ activeBookingResult.fullName }}</span>
               </div>
               <div class="flex justify-between border-b border-white/10 pb-2">
-                <span class="text-blue-100">Số điện thoại:</span>
-                <span class="font-bold">{{ activeBookingResult.phone }}</span>
-              </div>
-              <div class="flex justify-between border-b border-white/10 pb-2">
-                <span class="text-blue-100">Khoa khám:</span>
-                <span class="font-bold text-lg text-yellow-300">{{ activeBookingResult.department }}</span>
-              </div>
-              <div class="flex justify-between border-b border-white/10 pb-2">
                 <span class="text-blue-100">Bác sĩ:</span>
                 <span class="font-bold">{{ activeBookingResult.doctor }}</span>
               </div>
@@ -428,6 +515,20 @@ function resetForm() {
               <div class="flex justify-between border-b border-white/10 pb-2">
                 <span class="text-blue-100">Ngày khám:</span>
                 <span class="font-bold">{{ activeBookingResult.date }}</span>
+              </div>
+              <div class="flex justify-between border-b border-white/10 pb-2">
+                <span class="text-blue-100">Loại khám:</span>
+                <span class="font-bold text-yellow-200">{{ activeBookingResult.bookingType }}</span>
+              </div>
+              <div class="flex justify-between border-b border-white/10 pb-2">
+                <span class="text-blue-100">Thanh toán:</span>
+                <span class="font-bold">
+                  {{ activeBookingResult.paymentMethod }} 
+                  <span class="text-xs px-2 py-0.5 rounded-full ml-1 font-bold" 
+                        :class="activeBookingResult.paymentStatus === 'Đã thanh toán' ? 'bg-emerald-500/30 text-emerald-300' : 'bg-amber-500/30 text-amber-300'">
+                    ({{ activeBookingResult.paymentStatus }})
+                  </span>
+                </span>
               </div>
 
               <!-- Queue STT -->
@@ -464,8 +565,12 @@ function resetForm() {
                     <span class="font-bold text-gray-800">{{ b.department }}</span>
                     <span class="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded font-bold">{{ b.code }}</span>
                   </div>
-                  <p class="text-sm text-gray-400 mt-0.5">Giờ khám: <strong class="text-gray-600">{{ b.timeSlot }}</strong> - Ngày: {{ b.date }}</p>
-                  <p class="text-xs text-gray-400">Số thứ tự khám: <span class="font-bold text-primary-700">{{ b.stt }}</span></p>
+                  <p class="text-sm text-gray-500 mt-0.5">Giờ khám: <strong class="text-gray-700">{{ b.timeSlot }}</strong> - Ngày: {{ b.date }}</p>
+                  <p class="text-xs text-gray-400">
+                    STT: <span class="font-bold text-primary-700 mr-2">{{ b.stt }}</span> 
+                    Loại: <span class="text-gray-600 mr-2">{{ b.bookingType }}</span>
+                    Thanh toán: <span class="font-semibold" :class="b.paymentStatus === 'Đã thanh toán' ? 'text-emerald-600' : 'text-amber-600'">{{ b.paymentStatus }} ({{ b.paymentMethod }})</span>
+                  </p>
                 </div>
 
                 <button
@@ -478,7 +583,7 @@ function resetForm() {
               </div>
             </div>
             <div v-else class="text-center py-6 text-gray-400 text-base">
-              Bác chưa có lịch hẹn khám nào được đăng ký gần đây.
+              Bạn chưa có lịch hẹn khám nào được đăng ký gần đây.
             </div>
           </div>
 
@@ -495,7 +600,7 @@ function resetForm() {
             📋
           </div>
           <h3 class="text-2xl font-extrabold text-gray-800">Xác Nhận Đăng Ký Khám</h3>
-          <p class="text-base text-gray-400 mt-1">Bác vui lòng soát lại thông tin trước khi xác nhận:</p>
+          <p class="text-base text-gray-400 mt-1">Bạn vui lòng soát lại thông tin trước khi xác nhận:</p>
         </div>
 
         <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 text-base space-y-3">
@@ -504,6 +609,8 @@ function resetForm() {
           <p class="flex justify-between border-b pb-1.5"><span class="text-gray-500">Khoa khám:</span> <strong class="text-primary-800 font-bold">{{ form.department }}</strong></p>
           <p class="flex justify-between border-b pb-1.5"><span class="text-gray-500">Khung giờ:</span> <strong class="text-gray-800">{{ form.timeSlot }}</strong></p>
           <p class="flex justify-between border-b pb-1.5"><span class="text-gray-500">Ngày khám:</span> <strong class="text-gray-800">{{ form.date }}</strong></p>
+          <p class="flex justify-between border-b pb-1.5"><span class="text-gray-500">Loại khám:</span> <strong class="text-emerald-700">{{ form.bookingType }}</strong></p>
+          <p class="flex justify-between border-b pb-1.5"><span class="text-gray-500">Thanh toán:</span> <strong class="text-blue-700">{{ form.paymentMethod }}</strong></p>
           <p class="text-sm text-gray-500 mt-2"><span class="font-bold">Lý do:</span> {{ form.symptoms || 'Khám sức khỏe tổng quát' }}</p>
         </div>
 
@@ -519,6 +626,56 @@ function resetForm() {
             class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-base shadow"
           >
             Xác nhận đặt lịch
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== ONLINE PAYMENT QR MODAL ==================== -->
+    <div v-if="showPaymentQRModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 md:p-8 animate-fade-in-up space-y-6 border border-gray-100 text-center">
+        <div>
+          <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full uppercase tracking-wider mb-2">Cổng thanh toán điện tử</span>
+          <h3 class="text-2xl font-extrabold text-gray-800">Quét Mã QR Đóng Viện Phí</h3>
+          <p class="text-sm text-gray-500 mt-1">Sử dụng ứng dụng Ngân hàng hoặc Ví điện tử để quét mã thanh toán</p>
+        </div>
+
+        <!-- QR Code simulation container -->
+        <div class="bg-gray-50 p-6 rounded-3xl border border-gray-200/60 inline-block mx-auto relative group">
+          <div class="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl flex items-center justify-center pointer-events-none">
+            <span class="bg-emerald-600 text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-md">Simulating QR</span>
+          </div>
+          <!-- Real mockup QR using open API or clean image placeholder -->
+          <img 
+            src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=HOSPITAL_SUPPORT_PAYMENT_DEMO" 
+            alt="Mã QR Viện Phí" 
+            class="w-44 h-44 mx-auto rounded-xl shadow-sm border border-white"
+          />
+          <div class="mt-3 text-center">
+            <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Số tiền cần đóng</p>
+            <p class="text-2xl font-black text-primary-700 mt-0.5">150.000đ</p>
+          </div>
+        </div>
+
+        <div class="bg-primary-50 p-4 rounded-2xl text-left text-sm text-primary-850 space-y-1">
+          <p><strong>Nội dung:</strong> Đóng tiền khám bệnh - {{ tempBookingData?.fullName }}</p>
+          <p><strong>Khoa khám:</strong> Khoa {{ tempBookingData?.department }}</p>
+          <p><strong>Tài khoản hưởng:</strong> Bệnh Viện Đa Khoa Trung Ương</p>
+        </div>
+
+        <div class="flex gap-3">
+          <button
+            @click="showPaymentQRModal = false; tempBookingData = null"
+            class="flex-1 py-3.5 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 text-sm"
+          >
+            Hủy thanh toán
+          </button>
+          <button
+            @click="completeOnlinePayment"
+            class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow flex items-center justify-center gap-1.5"
+          >
+            <i class="bi bi-shield-check"></i>
+            Xác nhận Đã Chuyển Khoản
           </button>
         </div>
       </div>

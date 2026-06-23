@@ -26,15 +26,17 @@ const departments = [
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
         <!-- Hospital Info -->
         <div class="lg:col-span-1">
-          <div class="flex items-center gap-3 mb-5">
-            <div class="w-11 h-11 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
-              <i class="bi bi-hospital text-white text-xl"></i>
-            </div>
+          <RouterLink to="/" class="flex items-center gap-3 mb-5 group">
+            <img 
+              src="https://i.ibb.co/4gXZ9qs4/z7939748517288-6fea6e7a88629fd0c0ef6ce9326fd25f.png" 
+              alt="Logo" 
+              class="w-11 h-11 object-contain rounded-xl shadow-md group-hover:shadow-lg transition-shadow duration-300 bg-white p-0.5" 
+            />
             <div>
               <h3 class="text-white font-bold text-lg leading-tight">Bệnh Viện Đa Khoa</h3>
               <p class="text-xs text-gray-500">Hospital Support System</p>
             </div>
-          </div>
+          </RouterLink>
           <p class="text-sm leading-relaxed text-gray-400 mb-5">
             Hệ thống y tế hiện đại, uy tín hàng đầu. Chăm sóc sức khỏe toàn diện cho mọi gia đình với đội ngũ bác sĩ giỏi và trang thiết bị tiên tiến.
           </p>
