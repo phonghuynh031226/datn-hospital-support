@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 
 const props = defineProps({
   activeTab: {
@@ -33,8 +32,7 @@ const registerForm = ref({
   email: '',
   address: '',
   password: '',
-  confirmPassword: '',
-  ngaySinh: ''
+  confirmPassword: ''
 })
 
 // UI state
@@ -74,18 +72,7 @@ function sendOTP() {
   }, 1000)
 }
 
-function mapRole(backendRole) {
-  const roleMap = {
-    'BENH_NHAN': 'patient',
-    'DIEU_DUONG': 'nurse',
-    'BAC_SI': 'doctor',
-    'DUOC_SI': 'pharmacist',
-    'THU_KHO': 'warehouse'
-  }
-  return roleMap[backendRole] || 'patient'
-}
-
-async function handleLogin() {
+function handleLogin() {
   if (loginForm.value.usePhone) {
     if (!loginForm.value.phone || !loginForm.value.otp) {
       alert('Vui lòng điền đầy đủ số điện thoại và mã OTP!')
@@ -96,67 +83,69 @@ async function handleLogin() {
       return
     }
     
-    try {
-      const res = await axios.post('http://localhost:8080/api/auth/login', {
-        username: loginForm.value.phone,
-        password: '123456'
-      })
-      const user = res.data
-      const mappedUser = {
-        id: user.id,
-        fullName: user.fullName,
-        gender: user.gender,
-        phone: user.phone,
-        email: user.email,
-        address: user.address,
-        role: mapRole(user.role),
-        ngaySinh: user.ngaySinh
-      }
-      localStorage.setItem('currentUser', JSON.stringify(mappedUser))
-      alert('Đăng nhập thành công bằng số điện thoại!')
-      router.push('/')
-    } catch (err) {
-      alert(err.response?.data?.message || 'Không tìm thấy tài khoản tương ứng với số điện thoại này!')
+    // Success login by phone
+    const user = {
+      fullName: 'Bác Nguyễn Văn Hùng',
+      gender: 'Nam',
+      phone: loginForm.value.phone,
+      email: 'hung.nguyen@gmail.com',
+      address: '123 Đường Láng, Đống Đa, Hà Nội',
+      role: 'patient'
     }
+    localStorage.setItem('currentUser', JSON.stringify(user))
+    alert('Đăng nhập thành công bằng số điện thoại!')
+    router.push('/')
   } else {
     if (!loginForm.value.username || !loginForm.value.password) {
       alert('Vui lòng nhập tài khoản và mật khẩu!')
       return
     }
     
-    try {
-      const res = await axios.post('http://localhost:8080/api/auth/login', {
-        username: loginForm.value.username,
-        password: loginForm.value.password
-      })
-      const user = res.data
-      const mappedUser = {
-        id: user.id,
-        fullName: user.fullName,
-        gender: user.gender,
-        phone: user.phone,
-        email: user.email,
-        address: user.address,
-        role: mapRole(user.role),
-        ngaySinh: user.ngaySinh
+    // Simple mock database check
+    let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]')
+    let matchedUser = registeredUsers.find(u => u.phone === loginForm.value.username || u.email === loginForm.value.username)
+    
+    if (matchedUser) {
+      if (matchedUser.password === loginForm.value.password) {
+        localStorage.setItem('currentUser', JSON.stringify(matchedUser))
+        alert(`Chào mừng ${matchedUser.fullName} quay trở lại!`)
+        router.push('/')
+        return
+      } else {
+        alert('Mật khẩu không chính xác!')
+        return
       }
-      localStorage.setItem('currentUser', JSON.stringify(mappedUser))
-      alert(`Chào mừng ${mappedUser.fullName} quay trở lại!`)
-      
-      // Redirect accordingly
-      if (mappedUser.role === 'patient') router.push('/dat-lich')
-      else if (mappedUser.role === 'nurse') router.push('/dieu-duong')
-      else if (mappedUser.role === 'doctor') router.push('/bac-si-dashboard')
-      else if (mappedUser.role === 'pharmacist') router.push('/duoc-si')
-      else if (mappedUser.role === 'warehouse') router.push('/kho-thuoc')
-      else router.push('/')
-    } catch (err) {
-      alert(err.response?.data?.message || 'Tài khoản hoặc mật khẩu không chính xác!')
+    }
+    
+    // Default admin/doctor/patient accounts if no match in storage
+    if (loginForm.value.username === 'patient' && loginForm.value.password === '123456') {
+      const user = {
+        fullName: 'Nguyễn Văn A',
+        gender: 'Nam',
+        phone: '0901234567',
+        email: 'patient@hospital.com',
+        address: 'Quận 1, TP. Hồ Chí Minh',
+        role: 'patient'
+      }
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      alert('Đăng nhập thành công với tài khoản Bệnh nhân!')
+      router.push('/')
+    } else if (loginForm.value.username === 'doctor' && loginForm.value.password === '123456') {
+      const user = {
+        fullName: 'PGS.TS Nguyễn Văn An',
+        role: 'doctor',
+        specialty: 'Tim mạch'
+      }
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      alert('Đăng nhập thành công với tài khoản Bác sĩ!')
+      router.push({ name: 'doctor-thong-tin-bac-si' })
+    } else {
+      alert('Tài khoản hoặc mật khẩu không chính xác! Hãy đăng nhập bằng SĐT hoặc dùng tài khoản mẫu: patient / 123456')
     }
   }
 }
 
-async function handleRegister() {
+function handleRegister() {
   const f = registerForm.value
   if (!f.fullName || !f.phone || !f.password || !f.confirmPassword) {
     alert('Vui lòng nhập đầy đủ các trường bắt buộc (*)!')
@@ -167,21 +156,28 @@ async function handleRegister() {
     return
   }
   
-  try {
-    await axios.post('http://localhost:8080/api/auth/register', {
-      fullName: f.fullName,
-      gender: f.gender,
-      phone: f.phone,
-      email: f.email || null,
-      address: f.address || null,
-      password: f.password,
-      ngaySinh: f.ngaySinh || null
-    })
-    alert('Đăng ký tài khoản thành công! Bây giờ bạn có thể đăng nhập.')
-    switchTab('login')
-  } catch (err) {
-    alert(err.response?.data?.message || 'Đăng ký tài khoản thất bại!')
+  // Register account
+  const newUser = {
+    fullName: f.fullName,
+    gender: f.gender,
+    phone: f.phone,
+    email: f.email || `${f.phone}@gmail.com`,
+    address: f.address || 'Chưa cập nhật',
+    password: f.password,
+    role: 'patient'
   }
+  
+  let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]')
+  // Check if exists
+  if (registeredUsers.some(u => u.phone === f.phone)) {
+    alert('Số điện thoại này đã được đăng ký tài khoản!')
+    return
+  }
+  
+  registeredUsers.push(newUser)
+  localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers))
+  alert('Đăng ký tài khoản thành công! Bây giờ bạn có thể đăng nhập.')
+  switchTab('login')
 }
 </script>
 
@@ -342,6 +338,11 @@ async function handleRegister() {
               Xác Nhận Đăng Nhập
             </button>
           </form>
+
+          <div class="text-center mt-6 p-4 bg-primary-50 rounded-2xl text-base text-primary-800">
+            <p class="font-semibold mb-1"><i class="bi bi-info-circle mr-1"></i> Gợi ý đăng nhập nhanh:</p>
+            <p>Sử dụng tài khoản bệnh nhân mẫu: <strong>patient</strong> / mật khẩu <strong>123456</strong></p>
+          </div>
         </div>
 
         <!-- ==================== REGISTER FORM ==================== -->
@@ -367,38 +368,22 @@ async function handleRegister() {
               />
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span class="block text-lg font-semibold text-gray-700 mb-2">
-                  <i class="bi bi-gender-ambiguous text-primary-700 mr-1.5"></i>
-                  Giới tính <span class="text-red-500">*</span>
-                </span>
-                <div class="flex gap-4">
-                  <label class="flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer text-lg font-semibold transition-all"
-                         :class="registerForm.gender === 'Nam' ? 'bg-primary-50 border-primary-500 text-primary-700 font-bold' : 'border-gray-200 text-gray-600'">
-                    <input type="radio" value="Nam" v-model="registerForm.gender" class="sr-only" />
-                    <i class="bi bi-gender-male text-xl"></i> Nam
-                  </label>
-                  <label class="flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer text-lg font-semibold transition-all"
-                         :class="registerForm.gender === 'Nữ' ? 'bg-pink-50 border-pink-500 text-pink-700 font-bold' : 'border-gray-200 text-gray-600'">
-                    <input type="radio" value="Nữ" v-model="registerForm.gender" class="sr-only" />
-                    <i class="bi bi-gender-female text-xl"></i> Nữ
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label for="reg-dob" class="block text-lg font-semibold text-gray-700 mb-2">
-                  <i class="bi bi-calendar-event text-primary-700 mr-1.5"></i>
-                  Ngày sinh <span class="text-red-500">*</span>
+            <div>
+              <span class="block text-lg font-semibold text-gray-700 mb-2">
+                <i class="bi bi-gender-ambiguous text-primary-700 mr-1.5"></i>
+                Giới tính <span class="text-red-500">*</span>
+              </span>
+              <div class="flex gap-4">
+                <label class="flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer text-lg font-semibold transition-all"
+                       :class="registerForm.gender === 'Nam' ? 'bg-primary-50 border-primary-500 text-primary-700 font-bold' : 'border-gray-200 text-gray-600'">
+                  <input type="radio" value="Nam" v-model="registerForm.gender" class="sr-only" />
+                  <i class="bi bi-gender-male text-xl"></i> Nam
                 </label>
-                <input
-                  id="reg-dob"
-                  v-model="registerForm.ngaySinh"
-                  type="date"
-                  required
-                  class="w-full px-5 py-3.5 text-lg rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all text-gray-700"
-                />
+                <label class="flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer text-lg font-semibold transition-all"
+                       :class="registerForm.gender === 'Nữ' ? 'bg-pink-50 border-pink-500 text-pink-700 font-bold' : 'border-gray-200 text-gray-600'">
+                  <input type="radio" value="Nữ" v-model="registerForm.gender" class="sr-only" />
+                  <i class="bi bi-gender-female text-xl"></i> Nữ
+                </label>
               </div>
             </div>
 
