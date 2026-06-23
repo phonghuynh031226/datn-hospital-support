@@ -25,7 +25,7 @@ function loadBookings() {
 }
 
 function cancelBooking(id) {
-  const confirmCancel = confirm('Bác có chắc chắn muốn hủy lịch hẹn khám này không?')
+  const confirmCancel = confirm('Bạn có chắc chắn muốn hủy lịch hẹn khám này không?')
   if (!confirmCancel) return
   
   bookingHistory.value = bookingHistory.value.filter(b => b.id !== id)
@@ -106,7 +106,7 @@ ${exam.prescription.medicines.map((med, idx) => `${idx + 1}. ${med.name} - Số 
 Ghi chú từ bác sĩ:
 ${exam.prescription.notes}
 --------------------------------------------------
-Cảm ơn bác đã tin tưởng khám bệnh tại Bệnh viện Đa khoa!
+Cảm ơn bạn đã tin tưởng khám bệnh tại Bệnh viện Đa khoa!
 ==================================================`
 
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
@@ -116,7 +116,7 @@ Cảm ơn bác đã tin tưởng khám bệnh tại Bệnh viện Đa khoa!
   link.download = `Don_Thuoc_${exam.prescription.id}.txt`
   link.click()
   URL.revokeObjectURL(url)
-  alert('Đã tải đơn thuốc về máy của bác thành công!')
+  alert('Đã tải đơn thuốc về máy của bạn thành công!')
 }
 </script>
 
@@ -127,7 +127,7 @@ Cảm ơn bác đã tin tưởng khám bệnh tại Bệnh viện Đa khoa!
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h1 class="text-4xl md:text-5xl font-bold mb-4">Lịch Sử Khám Bệnh</h1>
         <p class="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-          Tra cứu lại lịch hẹn khám trực tuyến và xem kết quả chuẩn đoán bệnh, đơn thuốc chi tiết trước đây của bác.
+          Tra cứu lại lịch hẹn khám trực tuyến và xem kết quả chuẩn đoán bệnh, đơn thuốc chi tiết trước đây của bạn.
         </p>
       </div>
     </div>
@@ -139,7 +139,7 @@ Cảm ơn bác đã tin tưởng khám bệnh tại Bệnh viện Đa khoa!
           🔒
         </div>
         <h3 class="text-2xl font-bold text-gray-800">Yêu Cầu Đăng Nhập</h3>
-        <p class="text-base text-gray-500 mt-2">Bác cần đăng nhập tài khoản để tra cứu lịch sử và tải đơn thuốc y khoa.</p>
+        <p class="text-base text-gray-500 mt-2">Bạn cần đăng nhập tài khoản để tra cứu lịch sử và tải đơn thuốc y khoa.</p>
         <RouterLink to="/dang-nhap" class="w-full btn-primary !py-3.5 !text-lg !rounded-2xl shadow mt-6">
           Đến Trang Đăng Nhập
         </RouterLink>
@@ -207,7 +207,7 @@ Cảm ơn bác đã tin tưởng khám bệnh tại Bệnh viện Đa khoa!
         </div>
         
         <div v-else class="text-center py-12 text-gray-400 text-lg">
-          Bác không có lịch hẹn khám nào đang chờ khám.
+          Bạn không có lịch hẹn khám nào đang chờ khám.
         </div>
       </div>
 
