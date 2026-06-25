@@ -103,6 +103,11 @@ const routes = [
     name: 'doctor-dashboard',
     component: () => import('../views/doctor/DoctorDashboard.vue'),
   },
+  {
+    path: '/ho-so-nhan-vien',
+    name: 'staff-profile',
+    component: () => import('../views/doctor/StaffProfileView.vue'),
+  },
 
   /* ---------- Pharmacist ---------- */
   {
