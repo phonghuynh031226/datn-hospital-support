@@ -1,4 +1,4 @@
-package com.poly.hospital_support.impl; // Bạn kiểm tra lại dòng package này xem khớp với thư mục chứa file chưa nhé
+package com.poly.hospital_support.service.impl;
 
 import com.poly.hospital_support.entity.Medicine;
 import com.poly.hospital_support.entity.MedicineBatch;
@@ -21,55 +21,44 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Autowired
     private MedicineBatchRepository medicineBatchRepository;
 
-    /**
-     * 1. Lấy toàn bộ danh sách thuốc đang có trong kho hàng
-     */
     @Override
     public List<Medicine> getAllMedicines() {
         return medicineRepository.findAll();
     }
 
-    /**
-     * 2. Thêm một loại thuốc mới hoàn toàn vào danh mục
-     */
     @Override
     public Medicine createMedicine(Medicine medicine) {
         if (medicine.getInventoryQuantity() == null) {
-            medicine.setInventoryQuantity(0); // Thuốc mới khởi tạo có số lượng tồn bằng 0
+            medicine.setInventoryQuantity(0);
         }
         return medicineRepository.save(medicine);
     }
 
-    /**
-     * 3. Nghiệp vụ Nhập kho: Lưu phiếu nhập và tự động cộng dồn số lượng tồn kho của thuốc đó
-     */
     @Override
-    @Transactional // Đảm bảo nếu một trong các bước lưu DB bị lỗi, hệ thống sẽ rollback (huỷ bỏ) để tránh sai lệch số lượng
+    @Transactional
     public MedicineBatch importMedicine(MedicineBatch medicineBatch) {
-        // Kiểm tra tính hợp lệ của dữ liệu đầu vào
         if (medicineBatch.getMedicine() == null || medicineBatch.getMedicine().getId() == null) {
-            throw new RuntimeException("Thông tin thuốc nhập kho không hợp lệ!");
+            throw new RuntimeException("Thuốc nhập kho không hợp lệ!");
         }
 
-        // Bước 3.1: Tìm kiếm loại thuốc cần nhập trong bảng 'thuoc'
+        // Tìm thuốc trong danh mục bảng 'thuoc'
         Medicine medicine = medicineRepository.findById(medicineBatch.getMedicine().getId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại thuốc này trong danh mục!"));
 
-        // Bước 3.2: Tính toán số lượng tồn kho mới bằng cách lấy số lượng cũ cộng số lượng nhập mới
-        int currentQuantity = medicine.getInventoryQuantity() != null ? medicine.getInventoryQuantity() : 0;
-        int importQuantity = medicineBatch.getQuantity();
-        medicine.setInventoryQuantity(currentQuantity + importQuantity);
+        // Thực hiện cộng dồn số lượng tồn kho
+        int soLuongHienTai = medicine.getInventoryQuantity() != null ? medicine.getInventoryQuantity() : 0;
+        int soLuongNhapMoi = medicineBatch.getQuantity();
+        medicine.setInventoryQuantity(soLuongHienTai + soLuongNhapMoi);
 
-        // Lưu lại thông tin thuốc đã cập nhật số lượng mới vào bảng 'thuoc'
+        // Lưu lại số lượng mới vào bảng 'thuoc'
         medicineRepository.save(medicine);
 
-        // Bước 3.3: Gán lại thực thể thuốc đã cập nhật vào lô hàng, đặt thời gian nhập kho
+        // Thiết lập thông tin và lưu vào bảng 'nhap_kho_thuoc'
         medicineBatch.setMedicine(medicine);
         if (medicineBatch.getImportDate() == null) {
             medicineBatch.setImportDate(LocalDateTime.now());
         }
 
-        // Lưu bản ghi nhập kho vào bảng 'nhap_kho_thuoc'
         return medicineBatchRepository.save(medicineBatch);
     }
 }
