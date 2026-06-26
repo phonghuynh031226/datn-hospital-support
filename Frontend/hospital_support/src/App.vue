@@ -1,10 +1,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import AppHeader from './components/AppHeader.vue'
-import AppFooter from './components/AppFooter.vue'
-import StaffHeader from './components/StaffHeader.vue'
-import StaffFooter from './components/StaffFooter.vue'
+import HeaderChung from './components/HeaderChung.vue'
+import FooterChung from './components/FooterChung.vue'
+import HeaderNhanVien from './components/HeaderNhanVien.vue'
+import FooterNhanVien from './components/FooterNhanVien.vue'
 
 const route = useRoute()
 const isStaffRoute = computed(() => {
@@ -15,15 +15,15 @@ const isStaffRoute = computed(() => {
 
 <template>
   <div class="min-h-screen flex flex-col bg-white">
-    <AppHeader v-if="!isStaffRoute" />
-    <StaffHeader v-else />
+    <HeaderChung v-if="!isStaffRoute" />
+    <HeaderNhanVien v-else />
     
     <main class="flex-1">
       <RouterView />
     </main>
     
-    <AppFooter v-if="!isStaffRoute" />
-    <StaffFooter v-else />
+    <FooterChung v-if="!isStaffRoute" />
+    <FooterNhanVien v-else />
   </div>
 </template>
 
