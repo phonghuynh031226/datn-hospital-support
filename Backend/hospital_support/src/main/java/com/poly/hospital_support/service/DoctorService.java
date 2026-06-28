@@ -1,4 +1,9 @@
 package com.poly.hospital_support.service;
 
-public class DoctorService {
+public interface DoctorService {
+    Object getPatients();
+
+    Object getAppointments();
+
+    Object getWaitingPatients();
 }

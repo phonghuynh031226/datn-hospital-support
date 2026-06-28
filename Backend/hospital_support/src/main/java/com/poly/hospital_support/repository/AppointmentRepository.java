@@ -1,4 +1,9 @@
 package com.poly.hospital_support.repository;
 
-public class AppointmentRepository {
+import com.poly.hospital_support.entity.Appointment;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+
+public interface AppointmentRepository
+        extends JpaRepository<Appointment, Long> {
 }
