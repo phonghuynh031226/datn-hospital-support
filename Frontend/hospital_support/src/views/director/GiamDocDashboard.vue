@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import TrinhSoanThao from '../../components/TrinhSoanThao.vue'
 
+const API_GIAM_DOC = 'http://localhost:8080/api/v1/giam-doc'
 const activeMenu = ref('analytics') // analytics, staff, clinics, accounts, settings, news, doctor-bio
 const staff = ref([])
 const clinics = ref([])
@@ -13,6 +14,31 @@ const showAddClinicModal = ref(false)
 const showAddNewsModal = ref(false)
 const showScheduleModal = ref(false)
 const showEditBioModal = ref(false)
+
+const toast = ref({
+  show: false,
+  message: '',
+  type: 'success'
+})
+
+let toastTimer = null
+
+function showToast(message, type = 'success') {
+  toast.value = {
+    show: true,
+    message,
+    type
+  }
+
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+  }
+
+  toastTimer = setTimeout(() => {
+    toast.value.show = false
+  }, 3000)
+}
+
 
 // Bio Edit Form
 const selectedDoctorForBio = ref(null)
@@ -98,6 +124,13 @@ const currentEfficiency = computed(() => analyticsData[activePeriod.value].effic
 
 // System settings mock data
 const systemConfig = ref({
+  id: null,
+tenBenhVien: '',
+duongDanLogo: '',
+duongDanBanner: '',
+mauChuDao: '#2563EB',
+ngayCapNhat: null,
+
   banner1: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80',
   banner2: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80',
   banner3: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
@@ -311,25 +344,34 @@ function loadNews() {
   }
 }
 
-function loadSystemConfig() {
-  const data = localStorage.getItem('hospitalConfig')
-  if (data) {
-    const parsed = JSON.parse(data)
-    // Check if the loaded introText is the old one (short / placeholder)
-    let intro = parsed.introText
-    if (!intro || intro.length < 300 || intro.includes('nơi sức khỏe của bạn là ưu tiên số một. Chúng tôi cam kết đem lại dịch vụ khám chữa bệnh tốt nhất')) {
-      intro = systemConfig.value.introText
+async function loadSystemConfig() {
+      try {
+    const res = await fetch(`${API_GIAM_DOC}/cai-dat`, {
+      method: 'GET'
+    })
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Không thể tải cài đặt hệ thống. Status ${res.status}: ${errorText}`)
     }
-    systemConfig.value = {
-      ...systemConfig.value,
-      ...parsed,
-      introText: intro,
-      reasons: parsed.reasons && parsed.reasons.length === 4 ? parsed.reasons : systemConfig.value.reasons
+
+    const data = await res.json()
+
+    systemConfig.value.id = data.id
+    systemConfig.value.tenBenhVien = data.tenBenhVien || ''
+    systemConfig.value.duongDanLogo = data.duongDanLogo || ''
+    systemConfig.value.duongDanBanner = data.duongDanBanner || ''
+    systemConfig.value.mauChuDao = data.mauChuDao || '#2563EB'
+    systemConfig.value.ngayCapNhat = data.ngayCapNhat || null
+
+    if (data.duongDanBanner) {
+      systemConfig.value.banner1 = data.duongDanBanner
+      systemConfig.value.banner2 = data.duongDanBanner
+      systemConfig.value.banner3 = data.duongDanBanner
     }
-    // Save updated config back to localStorage
-    localStorage.setItem('hospitalConfig', JSON.stringify(systemConfig.value))
-  } else {
-    localStorage.setItem('hospitalConfig', JSON.stringify(systemConfig.value))
+  } catch (error) {
+    console.error('Lỗi loadSystemConfig:', error)
+    showToast('Không thể tải cài đặt hệ thống từ backend!', 'error')
   }
 }
 
@@ -340,14 +382,14 @@ function toggleAccountStatus(id) {
     list[idx].status = list[idx].status === 'Hoạt động' ? 'Bị Khóa' : 'Hoạt động'
     accounts.value = list
     localStorage.setItem('hospitalAccounts', JSON.stringify(list))
-    alert(`Đã cập nhật trạng thái tài khoản: ${list[idx].username} thành [${list[idx].status}]`)
+    showToast(`Đã cập nhật trạng thái tài khoản: ${list[idx].username} thành [${list[idx].status}]`, 'success')
   }
 }
 
 function addStaff() {
   const f = staffForm.value
   if (!f.name || !f.phone) {
-    alert('Vui lòng nhập đầy đủ thông tin nhân sự!')
+    showToast('Vui lòng nhập đầy đủ thông tin nhân sự!', 'error')
     return
   }
   const newMember = {
@@ -366,7 +408,7 @@ function addStaff() {
   
   staffForm.value = { name: '', role: 'doctor', specialty: 'Tim mạch', phone: '', schedule: 'Thứ 2 - Thứ 6 Ca sáng (08:00 - 12:00)', bio: '' }
   showAddStaffModal.value = false
-  alert('Đã bổ sung nhân sự mới thành công!')
+  showToast('Đã bổ sung nhân sự mới thành công!', 'success')
 }
 
 function removeStaff(id) {
@@ -402,7 +444,7 @@ function openScheduleModal(member) {
 
 function saveSchedule() {
   if (scheduleForm.value.days.length === 0) {
-    alert('Vui lòng chọn ít nhất một ngày làm việc!')
+    showToast('Vui lòng chọn ít nhất một ngày làm việc!', 'error')
     return
   }
   
@@ -415,7 +457,7 @@ function saveSchedule() {
     list[idx].room = scheduleForm.value.room
     staff.value = list
     localStorage.setItem('hospitalStaff', JSON.stringify(list))
-    alert(`Đã phân công lịch trực cho ${selectedStaffMember.value.name}: ${list[idx].schedule} tại ${list[idx].room}`)
+    showToast(`Đã phân công lịch trực cho ${selectedStaffMember.value.name}: ${list[idx].schedule} tại ${list[idx].room}`, 'success')
   }
   
   showScheduleModal.value = false
@@ -425,7 +467,7 @@ function saveSchedule() {
 function addClinic() {
   const f = clinicForm.value
   if (!f.name || !f.price) {
-    alert('Vui lòng nhập đầy đủ thông tin!')
+    showToast('Vui lòng nhập đầy đủ thông tin!', 'error')
     return
   }
   clinics.value.push({
@@ -437,7 +479,7 @@ function addClinic() {
   
   clinicForm.value = { name: '', price: 150000, headDoctor: 'PGS.TS Nguyễn Văn An' }
   showAddClinicModal.value = false
-  alert('Đã mở thêm khoa khám bệnh thành công!')
+  showToast('Đã mở thêm khoa khám bệnh thành công!', 'success')
 }
 
 function removeClinic(name) {
@@ -449,83 +491,88 @@ function removeClinic(name) {
 
 function handleBannerFile(event, key) {
   const file = event.target.files[0]
+
   if (file) {
     const reader = new FileReader()
+
     reader.onload = (e) => {
-      systemConfig.value[key] = e.target.result // Base64
+      systemConfig.value[key] = e.target.result
+
+      if (key === 'banner1' || key === 'banner2' || key === 'banner3') {
+        systemConfig.value.duongDanBanner = e.target.result
+      }
+
+      if (key === 'duongDanLogo') {
+        systemConfig.value.duongDanLogo = e.target.result
+      }
     }
+
     reader.readAsDataURL(file)
   }
 }
 
-function saveSystemConfig() {
-  localStorage.setItem('hospitalConfig', JSON.stringify(systemConfig.value))
-  alert('Đã lưu cấu hình hệ thống bệnh viện thành công!')
-}
+async function saveSystemConfig() {
+  try {
+    const mauChuDaoHopLe =
+      systemConfig.value.mauChuDao && systemConfig.value.mauChuDao.startsWith('#')
+        ? systemConfig.value.mauChuDao
+        : '#2563EB'
 
-// News management actions
-function openAddNewsModal() {
-  isEditingNews.value = false
-  newsForm.value = {
-    id: null,
-    title: '',
-    summary: '',
-    content: '<p>Nhập nội dung bài viết ở đây...</p>',
-    category: 'Sự kiện',
-    image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
-    author: 'Ban Giám Đốc',
-    date: new Date().toLocaleDateString('vi-VN')
-  }
-  showAddNewsModal.value = true
-}
+    const logoHopLe =
+      systemConfig.value.duongDanLogo && systemConfig.value.duongDanLogo.startsWith('http')
+        ? systemConfig.value.duongDanLogo
+        : ''
 
-function openEditNewsModal(item) {
-  isEditingNews.value = true
-  newsForm.value = { ...item }
-  showAddNewsModal.value = true
-}
+    const bannerHopLe =
+      systemConfig.value.duongDanBanner && systemConfig.value.duongDanBanner.startsWith('http')
+        ? systemConfig.value.duongDanBanner
+        : ''
 
-function handleNewsImageFile(event) {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      newsForm.value.image = e.target.result
+    const payload = {
+      tenBenhVien: systemConfig.value.tenBenhVien || 'Bệnh Viện Đa Khoa',
+      duongDanLogo: logoHopLe,
+      duongDanBanner: bannerHopLe,
+      mauChuDao: mauChuDaoHopLe
     }
-    reader.readAsDataURL(file)
-  }
-}
 
-function saveNews() {
-  const f = newsForm.value
-  if (!f.title || !f.summary || !f.content) {
-    alert('Vui lòng điền đầy đủ tiêu đề, tóm tắt và nội dung tin tức!')
-    return
-  }
+    console.log('Payload gửi lên BE:', payload)
 
-  const list = [...newsList.value]
-  if (isEditingNews.value) {
-    const idx = list.findIndex(item => item.id === f.id)
-    if (idx !== -1) {
-      list[idx] = { ...f }
+    const res = await fetch(`${API_GIAM_DOC}/cai-dat`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    const text = await res.text()
+    console.log('BE trả về:', text)
+
+    if (!res.ok) {
+      throw new Error(text)
     }
-  } else {
-    f.id = Date.now()
-    f.date = new Date().toLocaleDateString('vi-VN')
-    list.unshift({ ...f })
-  }
 
-  newsList.value = list
-  localStorage.setItem('hospitalNews', JSON.stringify(list))
-  showAddNewsModal.value = false
-  alert(isEditingNews.value ? 'Đã cập nhật bài viết thành công!' : 'Đã tạo bài viết tin tức mới thành công!')
+    const data = JSON.parse(text)
+
+    systemConfig.value.id = data.id
+    systemConfig.value.tenBenhVien = data.tenBenhVien || ''
+    systemConfig.value.duongDanLogo = data.duongDanLogo || ''
+    systemConfig.value.duongDanBanner = data.duongDanBanner || ''
+    systemConfig.value.mauChuDao = data.mauChuDao || '#2563EB'
+    systemConfig.value.ngayCapNhat = data.ngayCapNhat || null
+
+    showToast('Đã lưu cấu hình hệ thống thành công!', 'success')
+  } catch (error) {
+    console.error('Lỗi saveSystemConfig:', error)
+    showToast('Không thể lưu cấu hình hệ thống!', 'error')
+  }
 }
 
 function deleteNews(id) {
   if (confirm('Bác có chắc chắn muốn xóa bài viết tin tức này không?')) {
     newsList.value = newsList.value.filter(item => item.id !== id)
     localStorage.setItem('hospitalNews', JSON.stringify(newsList.value))
-    alert('Đã xóa bài viết thành công.')
+    showToast('Đã xóa bài viết thành công.', 'success')
   }
 }
 
@@ -544,7 +591,7 @@ function saveDoctorBio() {
   if (idx !== -1) {
     staff.value[idx].bio = bioForm.value.bio
     localStorage.setItem('hospitalStaff', JSON.stringify(staff.value))
-    alert(`Đã cập nhật tiểu sử cho bác sĩ ${bioForm.value.name}!`)
+    showToast(`Đã cập nhật tiểu sử cho bác sĩ ${bioForm.value.name}!`, 'success')
   }
   showEditBioModal.value = false
   selectedDoctorForBio.value = null
@@ -554,8 +601,18 @@ const doctorsList = computed(() => {
   return staff.value.filter(s => s.role === 'Bác sĩ chuyên khoa')
 })
 </script>
+
 <template>
   <div class="min-h-[calc(100vh-112px)] bg-gray-50 flex">
+    <div
+      v-if="toast.show"
+      class="fixed top-5 right-5 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl text-white font-semibold transition-all duration-300"
+      :class="toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'"
+    >
+      <span class="text-xl">{{ toast.type === 'success' ? '✅' : '⚠️' }}</span>
+      <span>{{ toast.message }}</span>
+    </div>
+
     <!-- Left Navigation Sidebar -->
     <aside class="w-64 bg-white border-r border-gray-150 flex flex-col justify-between p-4 flex-shrink-0">
       <div class="space-y-6">

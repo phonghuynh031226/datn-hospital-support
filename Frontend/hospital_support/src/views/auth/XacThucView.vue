@@ -87,6 +87,25 @@ function mapRole(backendRole) {
 }
 
 async function handleLogin() {
+  // --- ĐOẠN CODE BYPASS CHO GIÁM ĐỐC (THÊM VÀO ĐÂY) ---
+  if (!loginForm.value.usePhone && loginForm.value.username === 'giamdoc@gmail.com' && loginForm.value.password === '123456') {
+    const fakeDirector = {
+      id: 999,
+      fullName: 'Giám Đốc Hệ Thống',
+      gender: 'Nam',
+      phone: '0900000000',
+      email: 'giamdoc@gmail.com',
+      address: 'Bệnh Viện Đa Khoa',
+      role: 'director', // Khớp với route điều hướng phía dưới
+      ngaySinh: '1980-01-01'
+    }
+    localStorage.setItem('currentUser', JSON.stringify(fakeDirector))
+    alert(`Chào mừng ${fakeDirector.fullName} quay trở lại! (Chế độ Bypass)`)
+    router.push('/giam-doc')
+    return
+  }
+  // --- KẾT THÚC ĐOẠN CODE BYPASS ---
+
   if (loginForm.value.usePhone) {
     if (!loginForm.value.phone || !loginForm.value.otp) {
       alert('Vui lòng điền đầy đủ số điện thoại và mã OTP!')
