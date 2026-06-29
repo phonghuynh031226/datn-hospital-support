@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import TrinhSoanThao from '../../components/TrinhSoanThao.vue'
 
 const API_GIAM_DOC = 'http://localhost:8080/api/v1/giam-doc'
+const API_TIN_TUC = `${API_GIAM_DOC}/tin-tuc`
 const activeMenu = ref('analytics') // analytics, staff, clinics, accounts, settings, news, doctor-bio
 const staff = ref([])
 const clinics = ref([])
@@ -259,88 +260,33 @@ function loadAccounts() {
   }
 }
 
-function loadNews() {
-  const defaultNews = [
-    {
-      id: 1,
-      image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
-      title: 'Bệnh viện triển khai chương trình khám sức khỏe miễn phí cho người cao tuổi',
-      summary: 'Nhằm hưởng ứng tháng hành động vì người cao tuổi, bệnh viện tổ chức chương trình khám miễn phí cho bệnh nhân trên 60 tuổi, bao gồm đo đường huyết, điện tim và tư vấn dinh dưỡng xương khớp.',
-      content: '<h3>Chương trình ý nghĩa vì cộng đồng</h3><p>Nhằm hưởng ứng tháng hành động vì người cao tuổi Việt Nam và mong muốn đồng hành chăm sóc sức khỏe cộng đồng, Bệnh viện Đa Khoa thông báo triển khai chiến dịch chăm sóc sức khỏe cộng đồng đặc biệt với các nội dung thiết thực:</p><ul><li>Đo đường huyết mao mạch phòng ngừa đái tháo đường.</li><li>Đo điện tâm đồ (ECG) tầm soát bệnh lý tim mạch, huyết áp.</li><li>Khám chuyên khoa Cơ Xương Khớp miễn phí.</li></ul>',
-      date: '10/06/2026',
-      category: 'Sự kiện',
-      author: 'Phòng Truyền Thông'
-    },
-    {
-      id: 2,
-      image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80',
-      title: 'Ứng dụng kỹ thuật phẫu thuật nội soi tiên tiến trong điều trị bệnh tim',
-      summary: 'Lần đầu tiên tại Việt Nam, bệnh viện áp dụng thành công kỹ thuật phẫu thuật nội soi robot trong lĩnh vực tim mạch cho bệnh nhân cao tuổi bị hẹp van động mạch chủ.',
-      content: '<h3>Kỷ nguyên mới trong phẫu thuật tim mạch</h3><p>Đội ngũ chuyên khoa Ngoại tim mạch của Bệnh viện đã thực hiện thành công ca phẫu thuật thay van động mạch chủ bằng kỹ thuật phẫu thuật nội soi robot ít xâm lấn. Phương pháp này mang lại nhiều ưu điểm vượt trội như vết mổ nhỏ, hồi phục nhanh và hạn chế biến chứng...</p>',
-      date: '05/06/2026',
-      category: 'Y khoa',
-      author: 'TS.BS Nguyễn Văn An'
-    },
-    {
-      id: 3,
-      image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
-      title: 'Hướng dẫn đăng ký khám bệnh trực tuyến — Nhanh chóng & Tiện lợi',
-      summary: 'Hệ thống đặt lịch khám trực tuyến giúp bệnh nhân tiết kiệm thời gian chờ đợi, chủ động lựa chọn bác sĩ và khung giờ phù hợp ngay tại nhà thông qua máy tính hoặc điện thoại.',
-      content: '<h3>Các bước đặt lịch khám trực tuyến dễ dàng</h3><p>Bệnh nhân chỉ cần truy cập website, chọn Khoa khám, chọn Khung giờ mong muốn và mô tả triệu chứng để được xếp lịch và nhận số thứ tự ưu tiên khám bệnh mà không cần xếp hàng tại quầy lễ tân...</p>',
-      date: '01/06/2026',
-      category: 'Hướng dẫn',
-      author: 'Tổ Chăm Sóc Khách Hàng'
-    },
-    {
-      id: 4,
-      image: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80',
-      title: 'Chế độ dinh dưỡng khoa học dành cho người bệnh đái tháo đường',
-      summary: 'Chế độ ăn uống hợp lý đóng vai trò quyết định giúp kiểm soát tốt chỉ số đường huyết, duy trì năng lượng và hạn chế tối đa các biến chứng nguy hiểm của bệnh tiểu đường.',
-      content: '<h3>Dinh dưỡng kiểm soát đường huyết</h3><p>Người bệnh đái tháo đường cần xây dựng thực đơn ưu tiên các thực phẩm có chỉ số đường huyết (GI) thấp như rau xanh, các loại hạt ngũ cốc nguyên cám. Hạn chế tối đa tinh bột tinh chế, đồ ngọt có ga. Hãy chia nhỏ bữa ăn thành 5-6 bữa/ngày để duy trì đường huyết ổn định...</p>',
-      date: '28/05/2026',
-      category: 'Dinh dưỡng',
-      author: 'Dược sĩ Trần Thanh Thủy'
-    },
-    {
-      id: 5,
-      image: 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&w=600&q=80',
-      title: 'Tầm soát ung thư sớm: Chìa khóa vàng bảo vệ sức khỏe gia đình',
-      summary: 'Việc thực hiện kiểm tra sức khỏe và tầm soát ung thư định kỳ giúp phát hiện mầm mống tế bào ác tính ở giai đoạn đầu, nâng cao đáng kể tỷ lệ điều trị thành công lên tới 90%.',
-      content: '<h3>Bảo vệ sức khỏe chủ động từ sớm</h3><p>Nhiều bệnh lý ung thư diễn biến âm thầm không có triệu chứng rõ rệt ở giai đoạn đầu. Việc tầm soát định kỳ (như nội soi tiêu hóa, chụp X-quang tuyến vú, xét nghiệm chỉ dấu khối u) là biện pháp hiệu quả nhất để phát hiện bệnh sớm, từ đó có phác đồ can thiệp kịp thời và tiết kiệm chi phí...</p>',
-      date: '25/05/2026',
-      category: 'Y khoa',
-      author: 'GS.TS Lê Hoàng Minh'
-    },
-    {
-      id: 6,
-      image: 'https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&w=600&q=80',
-      title: 'Bí quyết bảo vệ đôi mắt khỏe mạnh trong kỷ nguyên số',
-      summary: 'Tiếp xúc liên tục với thiết bị điện tử khiến mắt dễ bị khô, mỏi và giảm thị lực. Bác sĩ chuyên khoa khuyên bạn nên áp dụng quy tắc 20-20-20 để bảo vệ mắt.',
-      content: '<h3>Bảo vệ mắt trong kỷ nguyên số</h3><p>Hội Nhãn khoa khuyến cáo người thường xuyên làm việc trước màn hình máy tính thực hiện quy tắc 20-20-20: Cứ sau 20 phút làm việc, hãy nhìn xa 20 feet (khoảng 6m) trong vòng 20 giây. Bổ sung thực phẩm giàu Vitamin A, Omega-3 và khám mắt định kỳ...</p>',
-      date: '20/05/2026',
-      category: 'Y khoa',
-      author: 'TS.BS Lê Thị Lan'
+async function loadNews() {
+  try {
+    const res = await fetch(API_TIN_TUC)
+
+    if (!res.ok) {
+        throw new Error("Không tải được danh sách tin tức")
     }
-  ]
-  const data = localStorage.getItem('hospitalNews')
-  if (data) {
-    const list = JSON.parse(data)
-    // If the saved news list is less than 6, merge it with the defaults so that the user immediately has 6 articles
-    if (list.length < 6) {
-      const merged = [...list]
-      defaultNews.forEach(d => {
-        if (!merged.some(m => m.title === d.title)) {
-          merged.push(d)
-        }
-      })
-      newsList.value = merged
-      localStorage.setItem('hospitalNews', JSON.stringify(merged))
-    } else {
-      newsList.value = list
-    }
-  } else {
-    newsList.value = defaultNews
-    localStorage.setItem('hospitalNews', JSON.stringify(defaultNews))
+
+    const data = await res.json()
+
+    newsList.value = data.map(item => ({
+      id: item.id,
+      title: item.tieuDe,
+      summary: item.tomTat,
+      content: item.noiDung,
+      image: item.hinhAnh,
+      author: item.tacGia,
+      category: item.danhMuc,
+      pinned: item.daGhim,
+      date: item.ngayTao
+        ? new Date(item.ngayTao).toLocaleDateString("vi-VN")
+        : ""
+    }))
+
+  } catch (error) {
+    console.error(error)
+    showToast("Không thể tải danh sách tin tức!", "error")
   }
 }
 
@@ -568,11 +514,131 @@ async function saveSystemConfig() {
   }
 }
 
-function deleteNews(id) {
-  if (confirm('Bác có chắc chắn muốn xóa bài viết tin tức này không?')) {
-    newsList.value = newsList.value.filter(item => item.id !== id)
-    localStorage.setItem('hospitalNews', JSON.stringify(newsList.value))
+async function saveNews() {
+  try {
+    const payload = {
+      tieuDe: newsForm.value.title,
+      tomTat: newsForm.value.summary,
+      noiDung: newsForm.value.content,
+      hinhAnh: newsForm.value.image,
+      tacGia: newsForm.value.author,
+      danhMuc: newsForm.value.category
+    }
+
+    let res
+
+    if (isEditingNews.value) {
+      res = await fetch(`${API_TIN_TUC}/${newsForm.value.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+    } else {
+      res = await fetch(API_TIN_TUC, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+    }
+
+    if (!res.ok) {
+      throw new Error(await res.text())
+    }
+
+    await loadNews()
+
+    showAddNewsModal.value = false
+
+    showToast(
+      isEditingNews.value
+        ? 'Cập nhật bài viết thành công!'
+        : 'Thêm bài viết thành công!',
+      'success'
+    )
+
+  } catch (err) {
+    console.error(err)
+    showToast('Không thể lưu bài viết!', 'error')
+  }
+}
+
+function openEditNewsModal(item) {
+  isEditingNews.value = true
+
+  newsForm.value = {
+    id: item.id,
+    title: item.title,
+    summary: item.summary,
+    content: item.content,
+    category: item.category,
+    image: item.image,
+    author: item.author,
+    date: item.date
+  }
+
+  showAddNewsModal.value = true
+}
+
+function openAddNewsModal() {
+  isEditingNews.value = false
+
+  newsForm.value = {
+    id: null,
+    title: '',
+    summary: '',
+    content: '',
+    category: 'Sự kiện',
+    image: '',
+    author: 'Phòng Ban Giám Đốc',
+    date: ''
+  }
+
+  showAddNewsModal.value = true
+}
+
+async function togglePinNews(id) {
+  try {
+    const res = await fetch(`${API_TIN_TUC}/${id}/ghim`, {
+      method: 'PUT'
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text)
+    }
+
+    await loadNews()
+    showToast('Đã cập nhật trạng thái ghim bài viết!', 'success')
+  } catch (error) {
+    console.error(error)
+    showToast('Không thể ghim/bỏ ghim bài viết! Tối đa chỉ được ghim 5 bài.', 'error')
+  }
+}
+
+async function deleteNews(id) {
+  if (!confirm('Bác có chắc chắn muốn xóa bài viết tin tức này không?')) {
+    return
+  }
+
+  try {
+    const res = await fetch(`${API_TIN_TUC}/${id}`, {
+      method: 'DELETE'
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text)
+    }
+
+    await loadNews()
     showToast('Đã xóa bài viết thành công.', 'success')
+  } catch (error) {
+    console.error(error)
+    showToast('Không thể xóa bài viết!', 'error')
   }
 }
 
@@ -1104,9 +1170,18 @@ const doctorsList = computed(() => {
                   <td class="py-4 px-6 font-mono text-xs">{{ item.date }}</td>
                   <td class="py-4 px-6 text-gray-550 font-semibold">{{ item.author }}</td>
                   <td class="py-4 px-6 text-center">
+                    <button
+                      @click="togglePinNews(item.id)"
+                      class="text-amber-500 hover:bg-amber-50 p-1.5 rounded-lg mr-1.5 transition-colors"
+                      :title="item.pinned ? 'Bỏ ghim bài viết' : 'Ghim bài viết'"
+                    >
+                      <i :class="item.pinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'"></i>
+                    </button>
+
                     <button @click="openEditNewsModal(item)" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg mr-1.5 transition-colors" title="Sửa bài viết">
                       <i class="bi bi-pencil-fill"></i>
                     </button>
+
                     <button @click="deleteNews(item.id)" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors" title="Xóa bài viết">
                       <i class="bi bi-trash"></i>
                     </button>
