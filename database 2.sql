@@ -11,7 +11,7 @@ CREATE TABLE tai_khoan (
     vai_tro VARCHAR(30) NOT NULL,
     trang_thai TINYINT DEFAULT 1,
     ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_vai_tro CHECK (vai_tro IN ('BENH_NHAN', 'DIEU_DUONG', 'BAC_SI', 'DUOC_SI', 'THU_KHO'))
+    CONSTRAINT chk_vai_tro CHECK (vai_tro IN ('BENH_NHAN', 'DIEU_DUONG', 'BAC_SI', 'DUOC_SI', 'THU_KHO', 'GIAM_DOC'))
 );
 
 CREATE TABLE benh_nhan (
