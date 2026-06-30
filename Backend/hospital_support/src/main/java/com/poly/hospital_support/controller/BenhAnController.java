@@ -1,35 +1,46 @@
 package com.poly.hospital_support.controller;
 
+
+
 import com.poly.hospital_support.entity.BenhAn;
 import com.poly.hospital_support.service.BenhAnService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/benh-an")
-@RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class BenhAnController {
 
-    private final BenhAnService benhAnService;
+    @Autowired
+    private BenhAnService benhAnService;
 
-    @GetMapping("/patient/{patientId}")
-    public ResponseEntity<List<BenhAn>> getPatientMedicalHistory(
-            @PathVariable Integer patientId,
-            @RequestParam(required = false) String search
-    ) {
-        return ResponseEntity.ok(benhAnService.getPatientMedicalHistory(patientId, search));
+    // Lấy tất cả bệnh án
+    @GetMapping("/tat-ca")
+    public List<BenhAn> getAll() {
+        return benhAnService.findAll();
     }
 
+    // Lấy bệnh án theo ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getMedicalRecordById(@PathVariable Integer id) {
-        try {
-            BenhAn ba = benhAnService.getMedicalRecordById(id);
-            return ResponseEntity.ok(ba);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
-        }
+    public ResponseEntity<BenhAn> getById(@PathVariable Integer id) {
+        return benhAnService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Tạo bệnh án mới
+    @PostMapping("/tao-moi")
+    public BenhAn create(@RequestBody BenhAn benhAn) {
+        return benhAnService.save(benhAn);
+    }
+
+    // Xóa bệnh án
+    @DeleteMapping("/xoa/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        benhAnService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

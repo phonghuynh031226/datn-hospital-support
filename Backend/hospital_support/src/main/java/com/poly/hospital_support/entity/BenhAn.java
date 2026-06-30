@@ -6,45 +6,35 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "benh_an")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class BenhAn {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ma_lich_hen", unique = true)
-    private LichHen lichHen;
+    // Liên kết với LichHen (nếu cần)
+  //  @OneToOne
+   // @JoinColumn(name = "ma_lich_hen")
+  //  private LichHen lichHen;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ma_benh_nhan", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "ma_benh_nhan")
     private BenhNhan benhNhan;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ma_bac_si", nullable = false)
-    private NhanVien bacSi;
+    @ManyToOne
+    @JoinColumn(name = "ma_bac_si")
+    private NhanVien nhanVien;
 
-    @Column(name = "trieu_chung", columnDefinition = "TEXT")
     private String trieuChung;
-
-    @Column(name = "chan_doan", columnDefinition = "TEXT")
     private String chanDoan;
-
-    @Column(name = "ket_luan", columnDefinition = "TEXT")
     private String ketLuan;
-
-    /**
-     * 'CHO_KHAM' | 'DANG_KHAM' | 'CHO_XET_NGHIEM' | 'CHO_KE_DON' | 'HOAN_THANH'
-     */
-    @Column(name = "trang_thai", length = 30, columnDefinition = "VARCHAR(30) DEFAULT 'CHO_KHAM'")
     private String trangThai;
 
-    @Column(name = "ngay_tao", insertable = false, updatable = false,
-            columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime ngayTao;
+    @Column(name = "ngay_tao")
+    private LocalDateTime ngayTao = LocalDateTime.now();
+
+    @OneToOne(mappedBy = "benhAn", cascade = CascadeType.ALL)
+    private DonThuoc donThuoc;
 }

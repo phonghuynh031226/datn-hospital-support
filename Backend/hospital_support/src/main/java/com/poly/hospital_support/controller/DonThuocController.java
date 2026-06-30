@@ -1,93 +1,52 @@
 package com.poly.hospital_support.controller;
 
-import com.poly.hospital_support.dto.ChiTietDonThuocResponse;
-import com.poly.hospital_support.dto.DonThuocResponse;
-import com.poly.hospital_support.entity.ChiTietDonThuoc;
+
 import com.poly.hospital_support.entity.DonThuoc;
-import com.poly.hospital_support.repository.ChiTietDonThuocRepository;
 import com.poly.hospital_support.service.DonThuocService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/don-thuoc")
-@RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class DonThuocController {
 
-    private final DonThuocService donThuocService;
-    private final ChiTietDonThuocRepository chiTietDonThuocRepository;
+    @Autowired
+    private DonThuocService donThuocService;
 
-    private DonThuocResponse mapToResponse(DonThuoc dt) {
-        List<ChiTietDonThuoc> details = chiTietDonThuocRepository.findByDonThuocId(dt.getId());
-        List<ChiTietDonThuocResponse> detailResponses = details.stream().map(d -> ChiTietDonThuocResponse.builder()
-                .id(d.getId())
-                .thuocId(d.getThuoc().getId())
-                .tenThuoc(d.getThuoc().getTenThuoc())
-                .donViTinh(d.getThuoc().getDonViTinh())
-                .donGia(d.getThuoc().getDonGia())
-                .soLuong(d.getSoLuong())
-                .soLuongThucPhat(d.getSoLuongThucPhat())
-                .huongDanSuDung(d.getHuongDanSuDung())
-                .loai(d.getLoai())
-                .build()).collect(Collectors.toList());
-
-        return DonThuocResponse.builder()
-                .id(dt.getId())
-                .benhAnId(dt.getBenhAn().getId())
-                .bacSiName(dt.getBacSi().getHoTen())
-                .benhNhanName(dt.getBenhNhan().getHoTen())
-                .trangThai(dt.getTrangThai())
-                .tongTien(dt.getTongTien())
-                .ngayTao(dt.getNgayTao())
-                .details(detailResponses)
-                .build();
+    // 1. Tạo mới đơn thuốc
+    @PostMapping("/tao-moi")
+    public ResponseEntity<DonThuoc> taoDonThuoc(@RequestBody DonThuoc donThuoc) {
+        return ResponseEntity.ok(donThuocService.saveDonThuoc(donThuoc));
     }
 
+    // 2. Tìm đơn thuốc theo ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getPrescriptionById(@PathVariable Integer id) {
-        try {
-            DonThuoc dt = donThuocService.getPrescriptionById(id);
-            return ResponseEntity.ok(mapToResponse(dt));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
-        }
+    public ResponseEntity<DonThuoc> getDonThuoc(@PathVariable Integer id) {
+        return donThuocService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
+    // 3. Tìm đơn thuốc theo mã bệnh án
     @GetMapping("/benh-an/{benhAnId}")
-    public ResponseEntity<?> getPrescriptionByBenhAnId(@PathVariable Integer benhAnId) {
-        try {
-            DonThuoc dt = donThuocService.getPrescriptionByBenhAnId(benhAnId);
-            return ResponseEntity.ok(mapToResponse(dt));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
-        }
+    public ResponseEntity<DonThuoc> getByBenhAnId(@PathVariable Integer benhAnId) {
+        DonThuoc donThuoc = donThuocService.findByBenhAnId(benhAnId);
+        return (donThuoc != null) ? ResponseEntity.ok(donThuoc) : ResponseEntity.notFound().build();
     }
 
-    @GetMapping("/{id}/pdf")
-    public ResponseEntity<byte[]> downloadPrescriptionPdf(@PathVariable Integer id) {
-        byte[] pdfBytes = donThuocService.generatePrescriptionPdf(id);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("filename", "don_thuoc_" + id + ".pdf");
-        headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
+    // 4. Lấy tất cả đơn thuốc
+    @GetMapping("/tat-ca")
+    public ResponseEntity<List<DonThuoc>> getAllDonThuoc() {
+        return ResponseEntity.ok(donThuocService.findAll());
     }
 
-    @GetMapping("/patient/{patientId}")
-    public ResponseEntity<List<DonThuocResponse>> getPrescriptionsByPatientId(@PathVariable Integer patientId) {
-        List<DonThuoc> list = donThuocService.getPrescriptionsByPatientId(patientId);
-        List<DonThuocResponse> responses = list.stream().map(this::mapToResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+    // 5. Xóa đơn thuốc
+    @DeleteMapping("/xoa/{id}")
+    public ResponseEntity<Void> deleteDonThuoc(@PathVariable Integer id) {
+        donThuocService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
