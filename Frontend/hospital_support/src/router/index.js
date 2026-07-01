@@ -100,7 +100,7 @@ const routes = [
   /* ---------- Doctor ---------- */
   {
     path: '/bac-si-dashboard',
-    name: 'doctor-dashboard',
+    name: 'doctor-dashboard', 
     component: () => import('../views/doctor/BacSiDashboard.vue'),
   },
   {
@@ -149,7 +149,7 @@ router.beforeEach((to, from, next) => {
   // 1. Danh sách đường dẫn cho từng vai trò
   const patientPaths = ['/dat-lich', '/ho-so', '/lich-su-kham', '/don-thuoc', '/so-do']
   const nursePaths = ['/dieu-duong']
-  const doctorPaths = ['/bac-si-dashboard', '/ho-so-nhan-vien']
+  const doctorPaths = ['/bac-si', '/ho-so-nhan-vien']
   const pharmacistPaths = ['/duoc-si']
   const warehousePaths = ['/kho-thuoc']
   const directorPaths = ['/giam-doc']
@@ -159,9 +159,9 @@ router.beforeEach((to, from, next) => {
   if (currentUser && authPaths.includes(to.path)) {
     if (userRole === 'patient') return next('/dat-lich')
     if (userRole === 'nurse') return next('/dieu-duong')
-    if (userRole === 'doctor') return next('/bac-si-dashboard')
+    if (userRole === 'doctor') return next('/bac-si')
     if (userRole === 'pharmacist') return next('/duoc-si')
-    if (userRole === 'warehouse') return next('/kho-thuoc')
+    if (userRole === 'warehouse') return next('/kho-thuoc') 
     if (userRole === 'director') return next('/giam-doc')
   }
 

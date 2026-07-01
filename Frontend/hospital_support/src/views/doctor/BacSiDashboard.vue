@@ -122,11 +122,54 @@ function loadMedicalHistory() {
 
 /* ========== LIFECYCLE ========== */
 onMounted(() => {
+
+  if (!localStorage.getItem('patientBookings')) {
+
+    localStorage.setItem(
+      'patientBookings',
+      JSON.stringify([
+        {
+          id: 1,
+          stt: 1,
+          fullName: 'Nguyễn Văn An',
+          patientAge: 30,
+          gender: 'Nam',
+          phone: '0901234567',
+          symptoms: 'Ho, sốt nhẹ, đau họng',
+          status: 'Đang khám'
+        },
+        {
+          id: 2,
+          stt: 2,
+          fullName: 'Trần Thị Mai',
+          patientAge: 25,
+          gender: 'Nữ',
+          phone: '0987654321',
+          symptoms: 'Đau đầu, chóng mặt',
+          status: 'Làn 1'
+        },
+        {
+          id: 3,
+          stt: 3,
+          fullName: 'Lê Văn Bình',
+          patientAge: 45,
+          gender: 'Nam',
+          phone: '0911222333',
+          symptoms: 'Tức ngực, khó thở',
+          status: 'Làn 2'
+        }
+      ])
+    )
+  }
+
   loadPatients()
   loadDoctorSchedule()
   loadProfile()
   loadMedicalHistory()
-  pollTimer = setInterval(() => { loadPatients() }, 2000)
+
+  pollTimer = setInterval(() => {
+    loadPatients()
+  }, 2000)
 })
 onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 
@@ -138,7 +181,10 @@ function loadDoctorSchedule() {
     const staffData = localStorage.getItem('hospitalStaff')
     if (staffData) {
       const staffList = JSON.parse(staffData)
-      const found = staffList.find(s => s.name.includes(user.name) || user.name.includes(s.name))
+      const found = staffList.find(
+  s => s.name?.includes(user.name) ||
+       user.name?.includes(s.name)
+)
       if (found) {
         doctorSchedule.value = found.schedule || doctorSchedule.value
         doctorRoom.value = found.room || doctorRoom.value
@@ -149,9 +195,14 @@ function loadDoctorSchedule() {
 
 function loadPatients() {
   const data = localStorage.getItem('patientBookings')
-  if (data) bookings.value = JSON.parse(data)
-}
 
+  console.log('DATA:', data)
+
+  if (data) {
+    bookings.value = JSON.parse(data)
+    console.log('BOOKINGS:', bookings.value)
+  }
+}
 /* ========== SEND FOR TESTS ========== */
 function sendForTests() {
   if (!currentPatient.value) return

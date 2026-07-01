@@ -80,7 +80,8 @@ function mapRole(backendRole) {
     'DIEU_DUONG': 'nurse',
     'BAC_SI': 'doctor',
     'DUOC_SI': 'pharmacist',
-    'THU_KHO': 'warehouse'
+    'THU_KHO': 'warehouse',
+    'GIAM_DOC': 'director'
   }
   return roleMap[backendRole] || 'patient'
 }
@@ -142,13 +143,14 @@ async function handleLogin() {
       }
       localStorage.setItem('currentUser', JSON.stringify(mappedUser))
       alert(`Chào mừng ${mappedUser.fullName} quay trở lại!`)
-      
+
       // Redirect accordingly
       if (mappedUser.role === 'patient') router.push('/dat-lich')
       else if (mappedUser.role === 'nurse') router.push('/dieu-duong')
-      else if (mappedUser.role === 'doctor') router.push('/bac-si-dashboard')
+      else if (mappedUser.role === 'doctor') router.push('/bac-si')
       else if (mappedUser.role === 'pharmacist') router.push('/duoc-si')
       else if (mappedUser.role === 'warehouse') router.push('/kho-thuoc')
+      else if (mappedUser.role === 'director') router.push('/giam-doc')
       else router.push('/')
     } catch (err) {
       alert(err.response?.data?.message || 'Tài khoản hoặc mật khẩu không chính xác!')

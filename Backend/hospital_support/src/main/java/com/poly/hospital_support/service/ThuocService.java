@@ -1,4 +1,4 @@
 package com.poly.hospital_support.service;
 
-public class DoctorService {
+public interface ThuocService {
 }
