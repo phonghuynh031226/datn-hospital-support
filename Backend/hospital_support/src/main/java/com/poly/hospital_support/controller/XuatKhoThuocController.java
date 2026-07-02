@@ -10,5 +10,5 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class XuatKhoThuocController {
 
-    private final XuatKhoThuocService Service;
+    private final XuatKhoThuocService service;
 }
